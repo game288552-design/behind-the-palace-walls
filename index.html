@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>มหาอาณาจักรต้าชิง - เกมจำลองราชวงศ์และฝ่ายใน</title>
+<style>
+  :root {
+    --bg-dark: #140c0c;
+    --bg-panel: #221414;
+    --bg-card: #2e1b1b;
+    --gold: #d4af37;
+    --gold-bright: #ffd700;
+    --red-imperial: #8b0000;
+    --red-bright: #ff4d4d;
+    --text-main: #f3e9d2;
+    --text-muted: #a89984;
+    --border-color: #5c3a21;
+  }
+
+  * { box-sizing: border-box; font-family: 'Sarabun', 'Tahoma', sans-serif; }
+  body { margin: 0; background-color: var(--bg-dark); color: var(--text-main); font-size: 14px; }
+
+  button {
+    background: linear-gradient(180deg, #4a2511 0%, #2e1509 100%);
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+  }
+  button:hover:not(:disabled) { background: var(--gold); color: #1a0d00; }
+  button:disabled {
+    background: #2a2a2a !important;
+    color: #666 !important;
+    border-color: #444 !important;
+    cursor: not-allowed;
+  }
+  .btn-danger { border-color: #ff4d4d; color: #ff8080; background: #3d0c0c; }
+  .btn-danger:hover:not(:disabled) { background: #ff4d4d; color: #fff; }
+  .btn-save { border-color: #5bc0de; color: #8be0f7; background: #102a36; }
+  .btn-save:hover:not(:disabled) { background: #5bc0de; color: #0a181f; }
+  .btn-active-speed { background: var(--gold) !important; color: #140c0c !important; }
+
+  .dead-red-text { color: #ff4d4d !important; font-weight: bold; }
+
+  /* Setup Screen */
+  #setup-screen {
+    max-width: 980px; margin: 20px auto; padding: 25px;
+    background: var(--bg-panel); border: 2px solid var(--gold); border-radius: 8px;
+  }
+  h1, h2, h3 { color: var(--gold); margin-top: 0; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; margin-bottom: 5px; color: var(--gold); font-weight: bold; }
+  input, select {
+    width: 100%; padding: 7px 10px; background: #140c0c; border: 1px solid var(--border-color);
+    color: var(--text-main); border-radius: 4px;
+  }
+
+  .rank-count-bar {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px;
+    background: #140c0c; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);
+    margin-bottom: 15px;
+  }
+  .consort-custom-list {
+    display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;
+    padding: 10px; background: #140c0c; border: 1px solid var(--border-color); border-radius: 6px;
+  }
+  .rank-section-box {
+    border: 1px solid #4a2e1b; background: #1c1010; padding: 10px; border-radius: 6px;
+  }
+  .rank-section-title {
+    color: var(--gold-bright); font-weight: bold; margin-bottom: 8px; border-bottom: 1px dashed #4a2e1b; padding-bottom: 4px;
+  }
+  .consort-row-editor {
+    display: grid; grid-template-columns: 1.5fr auto 1.6fr 0.6fr; gap: 8px; align-items: center;
+    background: var(--bg-card); padding: 8px; border-radius: 4px; margin-bottom: 6px; border: 1px solid #3d2424;
+  }
+  @media (max-width: 700px) { .consort-row-editor { grid-template-columns: 1fr; } }
+
+  /* Main Game Layout */
+  #game-screen { display: none; flex-direction: column; height: 100vh; }
+
+  #top-bar {
+    background: #1c0f0f; border-bottom: 2px solid var(--gold); padding: 8px 15px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  }
+  .stat-pill { background: var(--bg-card); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); }
+  .stat-pill span { color: var(--gold-bright); font-weight: bold; }
+  .speed-controls { display: flex; gap: 4px; }
+
+  #action-bar {
+    background: var(--bg-panel); border-bottom: 1px solid var(--border-color); padding: 8px 15px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+
+  #workspace {
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; padding: 12px;
+    flex: 1; overflow: hidden;
+  }
+  @media (max-width: 900px) { #workspace { grid-template-columns: 1fr; overflow-y: auto; } }
+
+  .panel {
+    background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-header {
+    background: #2b1616; padding: 8px 12px; border-bottom: 1px solid var(--gold);
+    font-weight: bold; color: var(--gold); display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel-body { padding: 12px; overflow-y: auto; flex: 1; }
+
+  .log-entry { padding: 6px 8px; border-bottom: 1px dashed #3a2323; line-height: 1.4; }
+  .log-normal { color: #ffffff; }
+  .log-important { color: #ffd700; font-weight: bold; background: rgba(212, 175, 55, 0.08); }
+  .log-critical { color: #ff4d4d; font-weight: bold; background: rgba(255, 77, 77, 0.12); }
+  .log-time { color: var(--text-muted); font-size: 12px; margin-right: 6px; }
+
+  /* Filter classes for Chronicle */
+  .chronicle-filter-bar {
+    display: flex; gap: 6px; background: #140c0c; padding: 6px 10px;
+    border-bottom: 1px solid var(--border-color); flex-wrap: wrap; align-items: center;
+  }
+  .filter-btn {
+    font-size: 11px; padding: 4px 9px; border-radius: 12px;
+    border: 1px solid #4a2e1b; background: #221414; color: var(--text-muted);
+  }
+  .filter-btn:hover:not(:disabled) { background: #3a2216; color: #fff; }
+  .filter-btn.active { border-color: var(--gold); color: #140c0c; background: var(--gold); }
+  .filter-btn.f-gold.active { background: #ffd700; color: #140c0c; border-color: #ffd700; }
+  .filter-btn.f-red.active { background: #ff4d4d; color: #fff; border-color: #ff4d4d; }
+  .filter-btn.f-white.active { background: #f3e9d2; color: #140c0c; border-color: #f3e9d2; }
+
+  #chronicle-list.filter-important .log-entry:not(.log-important) { display: none; }
+  #chronicle-list.filter-critical .log-entry:not(.log-critical) { display: none; }
+  #chronicle-list.filter-normal .log-entry:not(.log-normal) { display: none; }
+
+  .tabs { display: flex; gap: 4px; background: #140c0c; padding: 6px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
+  .tab-btn { font-size: 12px; padding: 4px 8px; }
+  .tab-btn.active { background: var(--gold); color: #140c0c; }
+
+  .char-card {
+    background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 5px;
+    padding: 10px; margin-bottom: 8px;
+  }
+  .char-card.cold-palace { border-color: #5bc0de; background: #162229; }
+  .char-card.confined { border-color: #e67e22; background: #291c12; }
+  .char-card.deceased {
+    background: #1f1f1f !important;
+    border-color: #4a4a4a !important;
+    color: #888888 !important;
+    opacity: 0.85;
+  }
+  .char-card.deceased .char-title {
+    color: #9e9e9e !important;
+  }
+  .char-card.deceased .char-meta,
+  .char-card.deceased span:not(.dead-red-text),
+  .char-card.deceased b {
+    color: #7d7d7d !important;
+  }
+
+  .char-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .char-title { font-weight: bold; color: var(--gold-bright); }
+  .char-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.5; }
+  .char-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .char-actions button { font-size: 11px; padding: 4px 7px; }
+
+  /* Expanded Modal & Readable Choice Buttons */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+    z-index: 1000; justify-content: center; align-items: center; padding: 15px;
+  }
+  .modal-box {
+    background: var(--bg-panel); border: 2px solid var(--gold); border-radius: 8px;
+    max-width: 860px; width: 95%; max-height: 88vh; display: flex; flex-direction: column;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.9);
+  }
+  .modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; line-height: 1.6; }
+  .modal-footer {
+    padding: 12px 20px; border-top: 1px solid var(--border-color);
+    display: flex; flex-direction: column; gap: 8px; background: #1a0f0f; border-radius: 0 0 6px 6px;
+  }
+  .modal-footer button {
+    width: 100%; text-align: left; padding: 10px 14px; font-size: 14px; line-height: 1.45;
+  }
+  .modal-footer button.modal-cancel-btn {
+    width: auto; align-self: flex-end; text-align: center; padding: 6px 16px;
+    background: #241616; border-color: #7a5c43; color: var(--text-muted); margin-top: 4px;
+  }
+  .modal-footer button.modal-cancel-btn:hover {
+    background: #3d2424; color: #fff;
+  }
+
+  .choice-btn {
+    display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px 14px;
+    background: var(--bg-card); border: 1px solid var(--gold); color: var(--text-main); line-height: 1.45;
+  }
+  .choice-btn:hover { background: #4a2c18; }
+  .regent-banner { background: #4a0e2e; border: 1px solid #ff80bf; color: #ffd6eb; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-weight: bold; }
+  .queue-badge {
+    background: #8b0000; color: #ffd700; border: 1px solid #ffd700;
+    padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;
+  }
+  .save-slot-box {
+    background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px;
+    padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+
+<!-- Input file แบบซ่อนสำหรับโหลดไฟล์เซฟ .json -->
+<input type="file" id="import-save-file" accept=".json" style="display:none" onchange="handleImportSaveFile(event)">
+
+<!-- ==================== 1. SETUP SCREEN ==================== -->
+<div id="setup-screen">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+    <h1 style="margin:0;">🐉 สถาปนาราชวงศ์ใหม่</h1>
+    <button class="btn-save" onclick="openLoadOnlyModal()">📂 โหลดเกมที่เซฟไว้</button>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+    <div class="form-group">
+      <label>ชื่อราชวงศ์ (เช่น ต้าชิง)</label>
+      <input type="text" id="setup-dynasty" value="ต้าชิง">
+    </div>
+    <div class="form-group">
+      <label>พระนามฮ่องเต้ปฐมกษัตริย์</label>
+      <input type="text" id="setup-emp-name" value="อ้ายซินเจว๋หลัว เสวียนเย่">
+    </div>
+    <div class="form-group">
+      <label>เพศสภาพของฮ่องเต้</label>
+      <select id="setup-emp-gender">
+        <option value="ชาย">ชาย</option>
+        <option value="หญิง">หญิง</option>
+        <option value="LGBT">LGBT</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>พระชนมายุเริ่มต้น (1 - 40 ปี) *หาก 1-14 ปี จะเป็นยุวกษัตริย์ยังไม่มีระบบสนม</label>
+      <input type="number" id="setup-emp-age" value="18" min="1" max="40">
+    </div>
+    <div class="form-group">
+      <label>ลักษณะนิสัย</label>
+      <select id="setup-emp-trait">
+        <option value="เด็ดขาดเข้มงวด">เด็ดขาดเข้มงวด (การรบ +15, ขุนนางเกรงกลัว)</option>
+        <option value="เมตตาธรรม">เมตตาธรรม (ความดี +15, ราษฎรรักใคร่)</option>
+        <option value="ปราชญ์เจ้าสำราญ">ปราชญ์เจ้าสำราญ (ความรู้ +15, เสน่ห์ฝ่ายในสูง)</option>
+        <option value="ระแวงเจ้าเล่ห์">ระแวงเจ้าเล่ห์ (ป้องกันการลอบปลงพระชนม์)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>พื้นฐานพระวรกาย (ส่งผลต่อโรคภัยในอนาคต)</label>
+      <select id="setup-emp-health-trait">
+        <option value="แข็งแรงกำยำ">แข็งแรงกำยำ (สุขภาพเริ่ม 100, ต้านทานโรคสูง)</option>
+        <option value="ปานกลางสมดุล">ปานกลางสมดุล (สุขภาพเริ่ม 85)</option>
+        <option value="อ่อนแอขี้โรคแต่กำเนิด">อ่อนแอขี้โรคแต่กำเนิด (สุขภาพเริ่ม 65, เสี่ยงป่วยง่าย)</option>
+      </select>
+    </div>
+  </div>
+
+  <h3>👑 กำหนดจำนวนและรายละเอียดพระมเหสี / พระสนมเริ่มต้น (เลือก 0 คนได้ทั้งหมด)</h3>
+  <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 8px;">
+    *ลำดับศักดิ์กองธง (เรียงจากบนสุดลงล่างสุด): <b>3 กองธงบน</b> (เหลืองขลิบ > เหลืองล้วน > ขาวล้วน) และ <b>5 กองธงล่าง</b> (แดงล้วน > ขาวขลิบ > แดงขลิบ > น้ำเงินล้วน > น้ำเงินขลิบ)
+  </p>
+
+  <div class="rank-count-bar">
+    <div>
+      <label style="color:var(--gold); font-size:12px;">1. ฮองเฮา (สูงสุด 1)</label>
+      <select id="cnt-ฮองเฮา" onchange="renderSetupConsortEditors()">
+        <option value="0">0 คน</option>
+        <option value="1" selected>1 คน</option>
+      </select>
+    </div>
+    <div>
+      <label style="color:var(--gold); font-size:12px;">4. เฟย (สูงสุด 4)</label>
+      <select id="cnt-เฟย" onchange="renderSetupConsortEditors()">
+        <option value="0" selected>0 คน</option><option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option><option value="4">4 คน</option>
+      </select>
+    </div>
+    <div>
+      <label style="color:var(--gold); font-size:12px;">5. ผิน (สูงสุด 6)</label>
+      <select id="cnt-ผิน" onchange="renderSetupConsortEditors()">
+        <option value="0" selected>0 คน</option><option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option><option value="4">4 คน</option><option value="5">5 คน</option><option value="6">6 คน</option>
+      </select>
+    </div>
+    <div>
+      <label style="color:var(--gold); font-size:12px;">6. กุ้ยเหริน (ไม่จำกัด)</label>
+      <select id="cnt-กุ้ยเหริน" onchange="renderSetupConsortEditors()">
+        <option value="0" selected>0 คน</option><option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option><option value="4">4 คน</option><option value="5">5 คน</option>
+      </select>
+    </div>
+    <div>
+      <label style="color:var(--gold); font-size:12px;">7. ฉางไจ้ (ไม่จำกัด)</label>
+      <select id="cnt-ฉางไจ้" onchange="renderSetupConsortEditors()">
+        <option value="0" selected>0 คน</option><option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option><option value="4">4 คน</option><option value="5">5 คน</option>
+      </select>
+    </div>
+    <div>
+      <label style="color:var(--gold); font-size:12px;">8. ตาอิ้ง (ไม่จำกัด)</label>
+      <select id="cnt-ตาอิ้ง" onchange="renderSetupConsortEditors()">
+        <option value="0" selected>0 คน</option><option value="1">1 คน</option><option value="2">2 คน</option><option value="3">3 คน</option><option value="4">4 คน</option><option value="5">5 คน</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="setup-consort-editors" class="consort-custom-list"></div>
+
+  <div style="margin-top: 20px; text-align: right;">
+    <button onclick="startNewGame()" style="font-size: 16px; padding: 10px 25px;">เริ่มครองราชย์ (รัชศกที่ 1)</button>
+  </div>
+</div>
+
+<!-- ==================== 2. MAIN GAME SCREEN ==================== -->
+<div id="game-screen">
+  <div id="top-bar">
+    <div class="stat-pill">ราชวงศ์ <span id="ui-dynasty"></span> | รุ่นที่ <span id="ui-gen">1</span> (<span id="ui-emp-name"></span> อายุ <span id="ui-emp-age"></span> ปี)</div>
+    <div class="stat-pill">รัชศกที่ <span id="ui-era">1</span> เดือน <span id="ui-month">1</span> สัปดาห์ <span id="ui-week">1</span>/2</div>
+    
+    <div class="speed-controls">
+      <button id="spd-0" onclick="setSpeed(0)">หยุด</button>
+      <button id="spd-1" class="btn-active-speed" onclick="setSpeed(1)">x1</button>
+      <button id="spd-2" onclick="setSpeed(2)">x2</button>
+      <button id="spd-3" onclick="setSpeed(3)">x3</button>
+      <button onclick="skipOneEra()">ผ่านไป 1 รัชศก</button>
+    </div>
+
+    <div class="stat-pill">💰 คลัง: <span id="ui-treasury">1,000,000</span> ตำลึง</div>
+    <div class="stat-pill">❤️ สุขภาพ: <span id="ui-health">100</span>/100</div>
+    
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%; border-top: 1px solid #331d1d; padding-top: 6px; align-items: center;">
+      <div class="stat-pill">ขุนนางซ้าย: <span id="ui-pop-left">50</span></div>
+      <div class="stat-pill">ขุนนางขวา: <span id="ui-pop-right">50</span></div>
+      <div class="stat-pill">ชาวแมนจู: <span id="ui-pop-manchu">50</span></div>
+      <div class="stat-pill">ชาวฮั่น: <span id="ui-pop-han">50</span></div>
+      <div class="stat-pill">ต่างเมือง: <span id="ui-pop-foreign">50</span></div>
+      <div style="margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap;">
+        <button class="btn-save" onclick="openSaveLoadModal('save')">💾 เซฟเกม</button>
+        <button class="btn-save" onclick="openSaveLoadModal('load')">📂 โหลดเกม</button>
+        <button onclick="openRelationsModal()">💞 ความสัมพันธ์</button>
+        <button class="btn-danger" onclick="confirmResetDynasty()">⚠️ หยุดราชวงศ์</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="action-bar">
+    <button onclick="openCeremonyModal()">🏮 พิธีมงคล (-500,000)</button>
+    <button id="btn-recruit-consort" onclick="openRecruitModal()">🌸 รับสนมใหม่ (-350,000)</button>
+    <button id="btn-promote-consort" onclick="openPromoteConsortModal()">⬆️ เลื่อนขั้นพระสนม (-150,000)</button>
+    <button onclick="openWarModal()">⚔️ ประกาศสงคราม (-1,000,000)</button>
+    <button id="btn-crown-prince" onclick="openCrownPrinceModal()">👑 แต่งตั้งองค์รัชทายาท</button>
+    <button id="btn-appoint-empress" onclick="openAppointEmpressModal()">👸 แต่งตั้งฮองเฮา</button>
+    <button onclick="openAbdicateModal()">📜 สละราชบัลลังก์</button>
+  </div>
+
+  <div id="workspace">
+    <div class="panel">
+      <div class="panel-header">
+        <span>📜 พงศาวดารบันทึกเหตุการณ์</span>
+        <span id="regent-indicator" style="color: #ff80bf; font-size: 12px;"></span>
+      </div>
+      <div class="chronicle-filter-bar">
+        <span style="font-size:11px; color:var(--text-muted);">กรองดูสี:</span>
+        <button class="filter-btn active" onclick="setChronicleFilter('all', this)">ทั้งหมด</button>
+        <button class="filter-btn f-gold" onclick="setChronicleFilter('important', this)">🟡 สีทอง (สำคัญ)</button>
+        <button class="filter-btn f-red" onclick="setChronicleFilter('critical', this)">🔴 สีแดง (วิกฤต)</button>
+        <button class="filter-btn f-white" onclick="setChronicleFilter('normal', this)">⚪ สีขาว (ทั่วไป)</button>
+      </div>
+      <div class="panel-body" id="chronicle-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span>🏯 แผงราชวงศ์และฝ่ายใน</span>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchFamilyTab('emp', this)">ฮ่องเต้ & ผู้สำเร็จราชการ</button>
+        <button class="tab-btn" onclick="switchFamilyTab('consorts', this)">พระสนมปัจจุบัน</button>
+        <button class="tab-btn" onclick="switchFamilyTab('sons', this)">พระราชโอรส</button>
+        <button class="tab-btn" onclick="switchFamilyTab('daughters', this)">พระราชธิดา</button>
+        <button class="tab-btn" onclick="switchFamilyTab('dowagers', this)">ไท่เฟย/รุ่นก่อน</button>
+      </div>
+      <div class="panel-body" id="family-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 3. UNIVERSAL MODAL ==================== -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="panel-header">
+      <span id="modal-title">หัวข้อ</span>
+      <button id="modal-top-close" onclick="closeModal()" style="padding: 2px 10px;">✕ ยกเลิก</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer">
+      <button class="modal-cancel-btn" onclick="closeModal()">ยกเลิก / ปิดหน้าต่าง</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA & CONSTANTS ====================
+const BANNERS_ORDERED = [
+  { value: "กองธงเหลืองขลิบ", label: "1. กองธงเหลืองขลิบ (สูงสุด - กองธงบนที่ 1)" },
+  { value: "กองธงเหลืองล้วน", label: "2. กองธงเหลืองล้วน (กองธงบนที่ 2)" },
+  { value: "กองธงขาวล้วน", label: "3. กองธงขาวล้วน (กองธงบนที่ 3)" },
+  { value: "กองธงแดงล้วน", label: "4. กองธงแดงล้วน (กองธงล่างที่ 1)" },
+  { value: "กองธงขาวขลิบ", label: "5. กองธงขาวขลิบ (กองธงล่างที่ 2)" },
+  { value: "กองธงแดงขลิบ", label: "6. กองธงแดงขลิบ (กองธงล่างที่ 3)" },
+  { value: "กองธงน้ำเงินล้วน", label: "7. กองธงน้ำเงินล้วน (กองธงล่างที่ 4)" },
+  { value: "กองธงน้ำเงินขลิบ", label: "8. กองธงน้ำเงินขลิบ (ล่างสุด - กองธงล่างที่ 5)" }
+];
+const BANNERS = BANNERS_ORDERED.map(b => b.value);
+
+const SURNAMES = ["หนิ่วฮู่ลู่", "น่าลา", "ฟู่ฉา", "ถงเจีย", "กัวเอ่อร์เจีย", "หม่าเจีย", "อีเอ่อร์เกินเจวี๋ยหลัว", "ป๋อเอ่อร์จี้จี๋เท่อ", "เว่ยเจีย", "เกาเจีย", "ซูมู่ลู่", "เฮ่อเซ่อหลี่"];
+const GIVEN_NAMES_F = ["หรูอี้", "เจินหวน", "อิงลั่ว", "เสวียนจี", "ชิงอิง", "ลวี่จู", "เหมยจวง", "อันหลิง", "ซู่เหยียน", "เฟยเยี่ยน", "อวี้เหยา", "จื่อเวย", "เสี่ยวเยี่ยน", "ชิงเหลียน", "หมิงเยว่"];
+const GIVEN_NAMES_M = ["หย่งเหยียน", "หงลี่", "อิ้นเจิน", "หย่งฉี", "หงโจ้ว", "อิ้นซื่อ", "หย่งเหลียน", "หงจ้าน", "อิ้นเสียง", "หย่งเฉิง", "เหมียนหนิง", "อี้จู่", "ไจ้เถียน", "ผู่อี๋"];
+
+const CONSORT_RANKS = [
+  { id: "ฮองเฮา", title: "1. ฮองเฮา (จักรพรรดินี 皇后)", limit: 1, order: 1, desc: "ประมุขแห่งวังหลัง ปกครองพระสนมทั้งหมด ถือตราหงส์" },
+  { id: "หวงกุ้ยเฟย", title: "2. หวงกุ้ยเฟย (จักรพรรดิอัครชายา 皇贵妃)", limit: 1, order: 2, desc: "รองจากฮองเฮา มักแต่งตั้งเมื่อตำแหน่งฮองเฮาว่างลง หรือสนมคนโปรดใกล้สิ้นพระชนม์" },
+  { id: "กุ้ยเฟย", title: "3. กุ้ยเฟย (อัครชายา 贵妃)", limit: 2, order: 3, desc: "พระสนมเอกชั้นสูง มีสิทธิ์ดูแลตำหนักหลักและงานบริหารในวังหลัง" },
+  { id: "เฟย", title: "4. เฟย (พระชายา 妃)", limit: 4, order: 4, desc: "พระสนมชั้นสูง มีราชทินนามเฉพาะตัวและเป็นเจ้าตำหนัก" },
+  { id: "ผิน", title: "5. ผิน (พระสนม 嫔)", limit: 6, order: 5, desc: "เริ่มเป็น 'นาย' (主位) เต็มตัว มีราชทินนาม และเป็นเจ้าตำหนักหลักได้" },
+  { id: "กุ้ยเหริน", title: "6. กุ้ยเหริน (พระสนมชั้นกลาง 贵人)", limit: 999, order: 6, desc: "อาศัยในตำหนักรอง (配殿) ใต้การดูแลของเจ้าตำหนักระดับผินขึ้นไป มักไม่มีราชทินนาม" },
+  { id: "ฉางไจ้", title: "7. ฉางไจ้ (พระสนมชั้นต้น 常在)", limit: 999, order: 7, desc: "มีเบี้ยหวัดและนางกำนัลรับใช้น้อยลง อยู่อาศัยในเรือนข้างของตำหนักต่างๆ" },
+  { id: "ตาอิ้ง", title: "8. ตาอิ้ง (สนมระดับล่างสุด 答应)", limit: 999, order: 8, desc: "ตำแหน่งเริ่มต้นของนางในที่ได้รับเลือก หรือสนมที่ถูกลดขั้น มีนางกำนัลส่วนตัวเพียง 1-2 คน" },
+  { id: "นางใน", title: "9. นางใน", limit: 999, order: 9, desc: "ตำแหน่งคนใช้ของเหล่าสนม" },
+  { id: "สามัญชน", title: "10. สามัญชน", limit: 999, order: 10, desc: "ขั้นนี้ถ้าถูกลดคือ ต้องถูกประหารหรือไม่ก็ต้องส่งไปตำหนักเย็นเท่านั้น" }
+];
+
+const HIGH_CONSORT_RANKS = ["ฮองเฮา", "หวงกุ้ยเฟย", "กุ้ยเฟย", "เฟย", "ผิน"];
+
+const PRINCE_RANKS = [
+  "เหอซั่วชินอ๋อง (ชินอ๋อง)",
+  "ตัวหลัวจวิ้นอ๋อง (จวิ้นอ๋อง)",
+  "ตัวหลัวเป้ยเล่อ (เป้ยเล่อ)",
+  "กู้ซานเป้ยจื่อ (เป้ยจื่อ)",
+  "เฟิ่งเอินเจิ้นกั๋วกง",
+  "เฟิ่งเอินฝู่กั๋วกง",
+  "ปู้รู่ปาเฟินเจิ้นกั๋วกง",
+  "ปู้รู่ปาเฟินฝู่กั๋วกง",
+  "เจิ้นกั๋วเจียงจวิน",
+  "ฝู่กั๋วเจียงจวิน",
+  "เฟิ่งกั๋วเจียงจวิน",
+  "เฟิ่งเอินเจียงจวิน"
+];
+
+// ==================== GAME STATE & MODAL QUEUE ====================
+let state = {
+  dynasty: "ต้าชิง",
+  generation: 1,
+  era: 1,
+  month: 1,
+  week: 1,
+  speed: 1,
+  treasury: 1000000,
+  pop: { left: 50, right: 50, manchu: 50, han: 50, foreign: 50 },
+  emperor: null,
+  empressDowager: null,
+  taishanghuang: null,
+  consorts: [],
+  dowagers: [],
+  children: [],
+  crownPrinceId: null,
+  regentActive: false,
+  relationsHistory: [],
+  logs: [],
+  currentTab: "emp"
+};
+
+let timer = null;
+let charIdCounter = 1;
+let modalQueue = [];
+let isModalShowing = false;
+let currentModalRequired = false;
+
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function fmtNum(n) { return n.toLocaleString('th-TH'); }
+function getRandomFemaleName() { return `${pick(SURNAMES)} ${pick(GIVEN_NAMES_F)}`; }
+
+// ==================== CHRONICLE COLOR FILTER ====================
+function setChronicleFilter(filterType, btn) {
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  const list = document.getElementById("chronicle-list");
+  list.classList.remove("filter-important", "filter-critical", "filter-normal");
+  if (filterType !== "all") {
+    list.classList.add(`filter-${filterType}`);
+  }
+}
+
+// ==================== SAVE & LOAD SYSTEM ====================
+const SAVE_PREFIX = "qing_dynasty_save_v1_";
+
+function buildSavePayload(label = "เซฟด้วยตนเอง") {
+  return {
+    version: 1,
+    savedAt: new Date().toLocaleString('th-TH'),
+    label,
+    charIdCounter,
+    state: JSON.parse(JSON.stringify(state))
+  };
+}
+
+function saveToSlot(slotKey, isAuto = false) {
+  try {
+    const payload = buildSavePayload(isAuto ? "เซฟอัตโนมัติ (ต้นเดือน)" : `ช่องเซฟที่ ${slotKey}`);
+    localStorage.setItem(SAVE_PREFIX + slotKey, JSON.stringify(payload));
+    if (!isAuto) {
+      addLog(`💾 บันทึกความคืบหน้าลงใน "ช่องเซฟที่ ${slotKey}" เรียบร้อยแล้ว`, "important");
+      openSaveLoadModal("save", true);
+    }
+  } catch (err) {
+    if (!isAuto) alert("ไม่สามารถบันทึกเซฟลงเบราว์เซอร์ได้ (พื้นที่เต็มหรือเบราว์เซอร์บล็อก) แนะนำให้ใช้ปุ่ม 'ดาวน์โหลดไฟล์เซฟ (.json)' แทนครับ");
+  }
+}
+
+function loadFromSlot(slotKey) {
+  const raw = localStorage.getItem(SAVE_PREFIX + slotKey);
+  if (!raw) { alert("ไม่พบข้อมูลในช่องเซฟนี้"); return; }
+  try {
+    const payload = JSON.parse(raw);
+    applyLoadedPayload(payload, slotKey === "auto" ? "เซฟอัตโนมัติ" : `ช่องเซฟที่ ${slotKey}`);
+  } catch (e) {
+    alert("ไฟล์เซฟเสียหาย ไม่สามารถโหลดได้");
+  }
+}
+
+function deleteSlot(slotKey, mode) {
+  localStorage.removeItem(SAVE_PREFIX + slotKey);
+  if (mode === "load_only") openLoadOnlyModal(true);
+  else openSaveLoadModal(mode, true);
+}
+
+function exportSaveFile() {
+  const payload = buildSavePayload("ไฟล์เซฟส่งออก");
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `save_${state.dynasty}_รุ่น${state.generation}_รัชศก${state.era}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  addLog(`📥 ส่งออกไฟล์เซฟ "${a.download}" เรียบร้อยแล้ว`, "important");
+}
+
+function triggerImportSaveFile() {
+  const input = document.getElementById("import-save-file");
+  input.value = "";
+  input.click();
+}
+
+function handleImportSaveFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const payload = JSON.parse(e.target.result);
+      applyLoadedPayload(payload, `ไฟล์ "${file.name}"`);
+    } catch (err) {
+      alert("รูปแบบไฟล์เซฟไม่ถูกต้อง กรุณาเลือกไฟล์ .json ที่ส่งออกจากเกมนี้เท่านั้น");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applyLoadedPayload(payload, sourceLabel) {
+  if (!payload || !payload.state || !payload.state.emperor) {
+    alert("ข้อมูลเซฟไม่สมบูรณ์");
+    return;
+  }
+  modalQueue = [];
+  isModalShowing = false;
+  state = payload.state;
+  charIdCounter = payload.charIdCounter || 500;
+
+  document.getElementById("setup-screen").style.display = "none";
+  document.getElementById("game-screen").style.display = "flex";
+
+  const list = document.getElementById("chronicle-list");
+  list.innerHTML = "";
+  const logsReversed = [...(state.logs || [])].reverse();
+  logsReversed.forEach(item => {
+    const cls = item.type === "important" ? "log-important" : (item.type === "critical" ? "log-critical" : "log-normal");
+    const div = document.createElement("div");
+    div.className = `log-entry ${cls}`;
+    div.innerHTML = `<span class="log-time">${item.timeStr}</span>${item.text}`;
+    list.prepend(div);
+  });
+
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  const tabMap = { emp: 0, consorts: 1, sons: 2, daughters: 3, dowagers: 4 };
+  const btns = document.querySelectorAll(".tab-btn");
+  if (btns[tabMap[state.currentTab]]) btns[tabMap[state.currentTab]].classList.add("active");
+
+  closeModal(true);
+  addLog(`📂 โหลดข้อมูลเกมจาก ${sourceLabel} สำเร็จ!`, "important");
+  updateUI();
+  setSpeed(1);
+}
+
+function renderSlotsListHtml(allowSave, mode) {
+  const slots = [
+    { key: "auto", title: "🔄 เซฟอัตโนมัติ (บันทึกทุกต้นเดือน)", canOverwrite: false },
+    { key: "1", title: "📁 ช่องเซฟที่ 1", canOverwrite: true },
+    { key: "2", title: "📁 ช่องเซฟที่ 2", canOverwrite: true },
+    { key: "3", title: "📁 ช่องเซฟที่ 3", canOverwrite: true }
+  ];
+
+  let html = "";
+  slots.forEach(s => {
+    const raw = localStorage.getItem(SAVE_PREFIX + s.key);
+    let infoHtml = `<span style="color:var(--text-muted); font-size:12px;">— ว่างเปล่า —</span>`;
+    let hasData = false;
+    if (raw) {
+      try {
+        const p = JSON.parse(raw);
+        if (p && p.state && p.state.emperor) {
+          hasData = true;
+          infoHtml = `
+            <div style="font-size:12px; color:var(--text-main); margin-top:3px;">
+              ราชวงศ์ <b>${p.state.dynasty}</b> | รุ่นที่ ${p.state.generation} (${p.state.emperor.name} อายุ ${p.state.emperor.age} ปี)<br>
+              เวลา: รัชศกที่ ${p.state.era} เดือน ${p.state.month} สัปดาห์ ${p.state.week} | คลัง: ${fmtNum(p.state.treasury)} ตำลึง<br>
+              <span style="color:var(--text-muted); font-size:11px;">บันทึกเมื่อ: ${p.savedAt}</span>
+            </div>
+          `;
+        }
+      } catch (e) {}
+    }
+
+    html += `
+      <div class="save-slot-box">
+        <div style="flex:1; min-width:220px;">
+          <b style="color:var(--gold-bright);">${s.title}</b>
+          ${infoHtml}
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${allowSave && s.canOverwrite ? `<button class="btn-save" onclick="saveToSlot('${s.key}', false)">💾 เซฟทับช่องนี้</button>` : ""}
+          <button ${!hasData ? "disabled" : ""} onclick="loadFromSlot('${s.key}')">📂 โหลด</button>
+          ${hasData ? `<button class="btn-danger" onclick="deleteSlot('${s.key}', '${mode}')" title="ลบเซฟช่องนี้">🗑️</button>` : ""}
+        </div>
+      </div>
+    `;
+  });
+  return html;
+}
+
+function openSaveLoadModal(defaultTab = "save", replaceCurrent = false) {
+  setSpeed(0);
+  const isSave = defaultTab === "save";
+  const html = `
+    <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:10px; flex-wrap:wrap;">
+      <button class="${isSave ? "btn-active-speed" : ""}" onclick="openSaveLoadModal('save', true)">💾 บันทึกเกม (Save)</button>
+      <button class="${!isSave ? "btn-active-speed" : ""}" onclick="openSaveLoadModal('load', true)">📂 โหลดเกม (Load)</button>
+      <button class="btn-save" style="margin-left:auto;" onclick="exportSaveFile()">📥 ดาวน์โหลดไฟล์เซฟ (.json)</button>
+      <button class="btn-save" onclick="triggerImportSaveFile()">📤 นำเข้าไฟล์เซฟ (.json)</button>
+    </div>
+    <p style="font-size:12px; color:var(--text-muted); margin-top:0;">
+      *สามารถเซฟลงเบราว์เซอร์ได้ 3 ช่อง (พร้อมเซฟอัตโนมัติทุกต้นเดือน) หรือดาวน์โหลดเป็นไฟล์ <b>.json</b> เก็บไว้ในเครื่องเพื่อย้ายเครื่อง/เก็บไม่จำกัด
+    </p>
+    ${renderSlotsListHtml(isSave, defaultTab)}
+  `;
+  openModal(isSave ? "💾 บันทึกความคืบหน้า (Save Game)" : "📂 โหลดเกมที่บันทึกไว้ (Load Game)", html, "", { replace: replaceCurrent });
+}
+
+function openLoadOnlyModal(replaceCurrent = false) {
+  const html = `
+    <div style="display:flex; gap:8px; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+      <span style="color:var(--gold); font-weight:bold;">เลือกช่องเซฟในเบราว์เซอร์ หรือนำเข้าไฟล์เซฟจากเครื่อง:</span>
+      <button class="btn-save" onclick="triggerImportSaveFile()">📤 นำเข้าไฟล์เซฟ (.json)</button>
+    </div>
+    ${renderSlotsListHtml(false, "load_only")}
+  `;
+  openModal("📂 โหลดเกมที่เซฟไว้", html, "", { replace: replaceCurrent });
+}
+
+// ==================== HELPER FUNCTIONS ====================
+function getRankObj(rankId) {
+  if (!rankId) return { id: "", order: 99, limit: 999 };
+  if (rankId === "ฮองไทเฮา") return { id: "ฮองไทเฮา", order: 1, limit: 1 };
+  const cleanRank = rankId.startsWith("ไท่") ? rankId.slice(3) : rankId;
+  return CONSORT_RANKS.find(r => r.id === cleanRank) || { id: rankId, order: 99, limit: 999 };
+}
+
+function getPrinceRankOrder(rankStr) {
+  if (!rankStr) return 99;
+  if (rankStr.includes("รัชทายาท")) return 0;
+  const idx = PRINCE_RANKS.indexOf(rankStr);
+  return idx !== -1 ? idx + 1 : 50;
+}
+
+function findPersonById(id) {
+  if (!id) return null;
+  if (state.empressDowager && state.empressDowager.id === id) return state.empressDowager;
+  const inConsorts = state.consorts.find(c => c.id === id);
+  if (inConsorts) return inConsorts;
+  const inDowagers = state.dowagers.find(d => d.id === id);
+  if (inDowagers) return inDowagers;
+  return null;
+}
+
+function getAllActiveEmpressDowagers() {
+  const list = [];
+  if (state.empressDowager && state.empressDowager.alive) {
+    list.push(state.empressDowager);
+  }
+  state.dowagers.forEach(d => {
+    if (d.alive && d.rank === "ฮองไทเฮา" && !list.some(x => x.id === d.id)) {
+      list.push(d);
+    }
+  });
+  return list;
+}
+
+function getLatestMotherDisplay(child, useHtml = false) {
+  const motherObj = findPersonById(child.motherId);
+  if (motherObj) {
+    if (!motherObj.alive) {
+      return useHtml
+        ? `${motherObj.rank} ${motherObj.name} <span class="dead-red-text">(มารดาสิ้นพระชนม์แล้ว)</span>`
+        : `${motherObj.rank} ${motherObj.name} (มารดาสิ้นพระชนม์แล้ว)`;
+    }
+    const coldTag = motherObj.inColdPalace ? " [ตำหนักเย็น]" : "";
+    return `${motherObj.rank} ${motherObj.name}${coldTag}`;
+  }
+  return child.motherName;
+}
+
+function getLatestFosterDisplay(child, useHtml = false) {
+  if (child.raisedById) {
+    const fosterObj = findPersonById(child.raisedById);
+    if (fosterObj) {
+      let statusSuffix = "";
+      if (!fosterObj.alive) {
+        statusSuffix = useHtml ? ` <span class="dead-red-text">(สิ้นพระชนม์แล้ว)</span>` : " (สิ้นพระชนม์แล้ว)";
+      } else if (fosterObj.inColdPalace) {
+        statusSuffix = " [ตำหนักเย็น]";
+      }
+      if (fosterObj.id === child.motherId) {
+        return `พระมารดาผู้ให้กำเนิด (${fosterObj.rank} ${fosterObj.name}${statusSuffix})`;
+      }
+      return `${fosterObj.rank} ${fosterObj.name}${statusSuffix}`;
+    }
+  }
+  if (!child.raisedBy) {
+    return getLatestMotherDisplay(child, useHtml);
+  }
+  return child.raisedBy;
+}
+
+function getConsortChildrenSummary(consortId) {
+  const kids = state.children.filter(ch => ch.motherId === consortId);
+  const aliveSons = kids.filter(k => k.alive && k.gender === "ชาย").length;
+  const aliveDaughters = kids.filter(k => k.alive && k.gender === "หญิง").length;
+  const deadSons = kids.filter(k => !k.alive && k.gender === "ชาย").length;
+  const deadDaughters = kids.filter(k => !k.alive && k.gender === "หญิง").length;
+  return {
+    aliveTotal: aliveSons + aliveDaughters,
+    aliveSons,
+    aliveDaughters,
+    deadTotal: deadSons + deadDaughters,
+    deadSons,
+    deadDaughters
+  };
+}
+
+function formatConsortChildrenText(consortId, useHtml = true) {
+  const s = getConsortChildrenSummary(consortId);
+  let base = `บุตร: ${s.aliveTotal} คน (โอรส ${s.aliveSons} / ธิดา ${s.aliveDaughters})`;
+  if (s.deadTotal > 0) {
+    const deadParts = [];
+    if (s.deadSons > 0) deadParts.push(`โอรสสิ้นพระชนม์ ${s.deadSons}`);
+    if (s.deadDaughters > 0) deadParts.push(`ธิดาสิ้นพระชนม์ ${s.deadDaughters}`);
+    const deadStr = ` [${deadParts.join(", ")}]`;
+    base += useHtml ? `<span class="dead-red-text">${deadStr}</span>` : deadStr;
+  }
+  return base;
+}
+
+function getActiveRegent() {
+  if (!state.regentActive) return null;
+  if (state.taishanghuang && state.taishanghuang.alive && state.taishanghuang.hasPower) {
+    return {
+      role: "ไท่ซ่างหวง (พระบิดา/อดีตฮ่องเต้ผู้ทรงอำนาจ)",
+      shortTitle: "ไท่ซ่างหวง",
+      name: state.taishanghuang.name,
+      age: state.taishanghuang.age
+    };
+  }
+  const activeEds = getAllActiveEmpressDowagers();
+  if (activeEds.length > 0) {
+    const names = activeEds.map(ed => ed.name).join(" และ ");
+    return {
+      role: activeEds.length > 1 ? `ฮองไทเฮาทั้งสองพระองค์ (${names})` : `ฮองไทเฮา (สมเด็จพระพันปีหลวง ${names})`,
+      shortTitle: "ฮองไทเฮา",
+      name: names,
+      age: activeEds[0].age
+    };
+  }
+  return null;
+}
+
+function generatePerson(gender, motherName = "ตระกูลขุนนาง", rank = "ตาอิ้ง", age = 16, customName = null, customBanner = null) {
+  const surname = pick(SURNAMES);
+  const gname = gender === "หญิง" ? pick(GIVEN_NAMES_F) : pick(GIVEN_NAMES_M);
+  return {
+    id: charIdCounter++,
+    name: customName || `${surname} ${gname}`,
+    gender,
+    motherName,
+    banner: customBanner || pick(BANNERS),
+    rank,
+    age,
+    alive: true,
+    inColdPalace: false,
+    confinedMonths: 0,
+    pregnant: false,
+    pregMonths: 0,
+    health: rand(75, 100),
+    stats: {
+      knowledge: rand(35, 88),
+      combat: rand(20, 85),
+      virtue: rand(35, 92)
+    },
+    relation: rank === "ฮองเฮา" ? 75 : rand(50, 70),
+    childrenCount: 0,
+    married: false,
+    marriageResidence: null,
+    genBorn: state.generation
+  };
+}
+
+// ==================== INITIALIZATION ====================
+function renderSetupConsortEditors() {
+  const container = document.getElementById("setup-consort-editors");
+  const ranksToSetup = ["ฮองเฮา", "เฟย", "ผิน", "กุ้ยเหริน", "ฉางไจ้", "ตาอิ้ง"];
+  let html = "";
+  let totalCount = 0;
+
+  ranksToSetup.forEach(rank => {
+    const count = parseInt(document.getElementById(`cnt-${rank}`).value) || 0;
+    if (count > 0) {
+      totalCount += count;
+      const rInfo = getRankObj(rank);
+      html += `<div class="rank-section-box">
+        <div class="rank-section-title">${rInfo.title} — จำนวน ${count} คน <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">(${rInfo.desc})</span></div>`;
+      for (let i = 0; i < count; i++) {
+        const uid = `${rank}-${i}`;
+        const defaultName = getRandomFemaleName();
+        const defaultAge = rand(15, 20);
+        const defaultBannerIdx = rank === "ฮองเฮา" ? 0 : rand(0, BANNERS_ORDERED.length - 1);
+
+        html += `
+          <div class="consort-row-editor">
+            <div><input type="text" id="setup-name-${uid}" value="${defaultName}" placeholder="กรอกชื่อ-สกุล"></div>
+            <div><button type="button" onclick="document.getElementById('setup-name-${uid}').value = getRandomFemaleName()">🎲 สุ่มชื่อ</button></div>
+            <div>
+              <select id="setup-banner-${uid}">
+                ${BANNERS_ORDERED.map((b, idx) => `<option value="${b.value}" ${idx === defaultBannerIdx ? "selected" : ""}>${b.label}</option>`).join("")}
+              </select>
+            </div>
+            <div><input type="number" id="setup-age-${uid}" value="${defaultAge}" min="14" max="35" title="อายุ (ปี)"></div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
+  });
+
+  if (totalCount === 0) {
+    html = `<p style="color:var(--text-muted); text-align:center; padding:15px;">ไม่ได้เลือกพระสนมเริ่มต้น (สามารถรับเข้าวังเพิ่มเมื่อฮ่องเต้พระชนมายุ 15 ปีขึ้นไป)</p>`;
+  }
+  container.innerHTML = html;
+}
+
+function startNewGame() {
+  modalQueue = [];
+  isModalShowing = false;
+  const dynasty = document.getElementById("setup-dynasty").value.trim() || "ต้าชิง";
+  const empName = document.getElementById("setup-emp-name").value.trim() || "ฮ่องเต้ปฐมกษัตริย์";
+  const gender = document.getElementById("setup-emp-gender").value;
+  const age = Math.max(1, parseInt(document.getElementById("setup-emp-age").value) || 18);
+  const trait = document.getElementById("setup-emp-trait").value;
+  const healthTrait = document.getElementById("setup-emp-health-trait").value;
+
+  let chosen = [];
+  const ranksToSetup = ["ฮองเฮา", "เฟย", "ผิน", "กุ้ยเหริน", "ฉางไจ้", "ตาอิ้ง"];
+  ranksToSetup.forEach(rank => {
+    const count = parseInt(document.getElementById(`cnt-${rank}`).value) || 0;
+    for (let i = 0; i < count; i++) {
+      const uid = `${rank}-${i}`;
+      const cName = document.getElementById(`setup-name-${uid}`).value.trim() || getRandomFemaleName();
+      const cBanner = document.getElementById(`setup-banner-${uid}`).value;
+      const cAge = parseInt(document.getElementById(`setup-age-${uid}`).value) || 17;
+      chosen.push(generatePerson("หญิง", "ตระกูลขุนนางแปดกองธง", rank, cAge, cName, cBanner));
+    }
+  });
+
+  let initHealth = healthTrait === "แข็งแรงกำยำ" ? 100 : (healthTrait === "ปานกลางสมดุล" ? 85 : 65);
+  state = {
+    dynasty,
+    generation: 1,
+    era: 1,
+    month: 1,
+    week: 1,
+    speed: 1,
+    treasury: 1000000,
+    pop: { left: 50, right: 50, manchu: 50, han: 50, foreign: 50 },
+    emperor: {
+      id: charIdCounter++,
+      name: empName,
+      gender,
+      age,
+      trait,
+      healthTrait,
+      health: initHealth,
+      stats: {
+        knowledge: trait === "ปราชญ์เจ้าสำราญ" ? 80 : (age < 15 ? 30 : 60),
+        combat: trait === "เด็ดขาดเข้มงวด" ? 80 : (age < 15 ? 25 : 60),
+        virtue: trait === "เมตตาธรรม" ? 80 : 60
+      }
+    },
+    empressDowager: generatePerson("หญิง", "อดีตฮองเฮารัชกาลก่อน", "ฮองไทเฮา", age + 24, null, "กองธงเหลืองขลิบ"),
+    taishanghuang: null,
+    consorts: chosen,
+    dowagers: [],
+    children: [],
+    crownPrinceId: null,
+    regentActive: age <= 22,
+    relationsHistory: [],
+    logs: [],
+    currentTab: "emp"
+  };
+
+  document.getElementById("setup-screen").style.display = "none";
+  document.getElementById("game-screen").style.display = "flex";
+  document.getElementById("chronicle-list").innerHTML = "";
+
+  addLog(`ปฐมกษัตริย์ ${empName} (พระชนมายุ ${age} พรรษา) ขึ้นครองราชย์สถาปนาราชวงศ์ ${dynasty} เริ่มต้นรัชศกที่ 1 (2 สัปดาห์ = 1 เดือน, 12 เดือน = 1 รัชศก)`, "important");
+  if (age < 15) {
+    addLog(`เนื่องจากฮ่องเต้ยังทรงพระเยาว์ (${age} พรรษา) ชีวิตประจำวันจะเน้นการทรงพระอักษรและกิจกรรมวัยเยาว์ ยังไม่เปิดระบบฝ่ายในจนกว่าจะครบ 15 พรรษา`, "important");
+  }
+  if (state.regentActive) {
+    const regent = getActiveRegent();
+    addLog(`เนื่องจากฮ่องเต้พระชนมายุ ${age} พรรษา (ไม่เกิน 22 พรรษา) ${regent.role} จึงเสด็จออกว่าราชการหลังม่านไม้ไผ่ร่วมตัดสินพระทัย`, "important");
+  }
+
+  saveToSlot("auto", true);
+  updateUI();
+  setSpeed(1);
+}
+
+// ==================== TIME & SIMULATION LOOP (2 สัปดาห์ = 1 เดือน, 12 เดือน = 1 รัชศก) ====================
+function setSpeed(spd) {
+  if (spd > 0 && (isModalShowing || modalQueue.length > 0)) {
+    state.speed = 0;
+  } else {
+    state.speed = spd;
+  }
+  [0, 1, 2, 3].forEach(s => {
+    const btn = document.getElementById(`spd-${s}`);
+    if (btn) btn.classList.toggle("btn-active-speed", s === state.speed);
+  });
+  if (timer) clearInterval(timer);
+  if (state.speed > 0) {
+    const interval = state.speed === 1 ? 2200 : (state.speed === 2 ? 1100 : 500);
+    timer = setInterval(advanceWeek, interval);
+  }
+}
+
+function skipOneEra() {
+  if (isModalShowing || modalQueue.length > 0) return;
+  const prevSpeed = state.speed;
+  setSpeed(0);
+  const targetEra = state.era + 1;
+  while (state.era < targetEra && state.emperor && state.emperor.health > 0 && !isModalShowing && modalQueue.length === 0) {
+    advanceWeek(true);
+  }
+  saveToSlot("auto", true);
+  updateUI();
+  if (!isModalShowing && modalQueue.length === 0) {
+    setSpeed(prevSpeed || 1);
+  }
+}
+
+function advanceWeek(silent = false) {
+  if (!state.emperor) return;
+  if (isModalShowing || modalQueue.length > 0) {
+    setSpeed(0);
+    return;
+  }
+
+  state.week++;
+  if (state.week > 2) {
+    state.week = 1;
+    state.month++;
+    processMonthlyEvents();
+    if (state.month > 12) {
+      state.month = 1;
+      state.era++;
+      processYearlyAging();
+    }
+    if (!silent) saveToSlot("auto", true);
+  }
+
+  processWeeklyEvents();
+  if (!silent) updateUI();
+}
+
+function processYearlyAging() {
+  state.emperor.age++;
+
+  // ตรวจสอบอายุและการสิ้นพระชนม์ของฮองไทเฮาหลัก
+  if (state.empressDowager && state.empressDowager.alive) {
+    state.empressDowager.age++;
+    const edAge = state.empressDowager.age;
+    const oldAgeDieChance = edAge > 55 ? (0.04 + (edAge - 55) * 0.015) : 0.012;
+    if (Math.random() < oldAgeDieChance) {
+      state.empressDowager.alive = false;
+      const cause = edAge > 60 ? "พระโรคชราภาพ" : "พระอาการประชวรหนักกะทันหัน";
+      addLog(`🏴 ข่าวเศร้าในวังหลวง! ฮองไทเฮา ${state.empressDowager.name} เสด็จสวรรคตด้วย${cause} ในพระชนมายุ ${edAge} พรรษา!`, "critical");
+      if (state.regentActive && !getActiveRegent()) {
+        addLog(`ฮ่องเต้ ${state.emperor.name} ทรงขึ้นว่าราชการด้วยพระองค์เองเต็มรูปแบบหลังผู้สำเร็จราชการสวรรคต`, "important");
+      }
+    }
+  }
+
+  // พระสนมปัจจุบันเติบโตตามวัย
+  state.consorts.forEach(c => {
+    if (!c.alive) return;
+    c.age++;
+    if (c.age > 55 && Math.random() < (0.03 + (c.age - 55) * 0.015)) {
+      c.alive = false;
+      addLog(`🕯️ ${c.rank} ${c.name} สิ้นพระชนม์ด้วยโรคชราในวัย ${c.age} ปี`, "important");
+    }
+  });
+
+  // เหล่าสนมรุ่นก่อน (รวมถึงฮองไทเฮาองค์รอง หากมี) เติบโตตามวัยและมีโอกาสสิ้นพระชนม์แบบไม่คาดคิดหรือโรคชรา
+  state.dowagers.forEach(d => {
+    if (!d.alive) return;
+    if (state.empressDowager && d.id === state.empressDowager.id) return;
+    d.age++;
+
+    const isEmpressDowager = d.rank === "ฮองไทเฮา";
+    const baseUnexpected = d.inColdPalace ? 0.055 : 0.025;
+    const ageRisk = d.age > 50 ? (d.age - 50) * 0.015 : 0;
+    if (Math.random() < (baseUnexpected + ageRisk)) {
+      d.alive = false;
+      const reasons = d.inColdPalace
+        ? ["ตรอมใจและประชวรหนักในตำหนักเย็น", "ล้มป่วยกะทันหันโดยไร้หมอหลวงเหลียวแลในตำหนักเย็น"]
+        : (d.age >= 60
+          ? ["สิ้นพระชนม์ด้วยพระโรคชราภาพอย่างสงบ", "พระพลานามัยทรุดโทรมตามวัยและสิ้นพระชนม์"]
+          : ["ประชวรด้วยโรคระบาดตามฤดูกาลและสิ้นพระชนม์อย่างกะทันหัน", "ล้มป่วยด้วยพระโรคหัวใจวายเฉียบพลันและสิ้นพระชนม์", "เกิดอุบัติเหตุพลัดตกบันไดตำหนักและสิ้นพระชนม์อย่างไม่คาดคิด"]);
+      addLog(`🕯️ ข่าวเศร้าฝ่ายใน! ${d.rank} ${d.name} ${isEmpressDowager ? "" : "(สนมรุ่นก่อน) "}${pick(reasons)} ในวัย ${d.age} ปี`, isEmpressDowager ? "critical" : "important");
+    }
+  });
+
+  if (state.taishanghuang && state.taishanghuang.alive) {
+    state.taishanghuang.age++;
+    if (state.taishanghuang.age > 65 && Math.random() < 0.15) {
+      state.taishanghuang.alive = false;
+      state.taishanghuang.hasPower = false;
+      addLog(`🏴 ข่าวเศร้าในวังหลวง! ${state.taishanghuang.name} (ไท่ซ่างหวง) เสด็จสวรรคตด้วยพระโรคชราภาพในพระชนมายุ ${state.taishanghuang.age} พรรษา!`, "critical");
+      const nextRegent = getActiveRegent();
+      if (state.regentActive && nextRegent) {
+        addLog(`${nextRegent.role} เสด็จขึ้นว่าราชการหลังม่านแทนไท่ซ่างหวงที่สวรรคต`, "important");
+      }
+    }
+  }
+
+  if (state.emperor.age === 15) {
+    addLog(`🎉 ฮ่องเต้ ${state.emperor.name} ทรงเจริญพระชนมายุครบ 15 พรรษาแล้ว! ทรงเข้าสู่วัยหนุ่มเต็มตัว สามารถรับพระสนมเข้าวังและเปิดระบบฝ่ายในได้แล้ว`, "important");
+  }
+
+  if (state.regentActive && state.emperor.age > 22) {
+    const prevRegent = getActiveRegent();
+    state.regentActive = false;
+    const regentTitle = prevRegent ? prevRegent.shortTitle : "ผู้สำเร็จราชการ";
+    addLog(`ฮ่องเต้ทรงเจริญพระชนมายุครบ ${state.emperor.age} พรรษา ${regentTitle}ทรงคืนพระราชอำนาจการปกครองทั้งหมดให้แก่ฮ่องเต้!`, "important");
+  }
+
+  state.children.forEach(ch => {
+    if (!ch.alive) return;
+    ch.age++;
+    if (ch.age === 15 && !ch.married) {
+      triggerChildMarriageEvent(ch);
+    }
+  });
+
+  checkEmperorMortality();
+}
+
+function processMonthlyEvents() {
+  // โอกาสรายเดือนที่ฮองไทเฮาหลักจะประชวรหนักกะทันหันและสิ้นพระชนม์
+  if (state.empressDowager && state.empressDowager.alive && Math.random() < 0.004) {
+    state.empressDowager.alive = false;
+    addLog(`🏴 เหตุไม่คาดฝัน! ฮองไทเฮา ${state.empressDowager.name} ทรงพระประชวรเฉียบพลันและเสด็จสวรรคตในพระชนมายุ ${state.empressDowager.age} พรรษา!`, "critical");
+  }
+
+  // โอกาสรายเดือนที่สนมรุ่นก่อน (หรือฮองไทเฮาองค์รอง) จะสิ้นพระชนม์อย่างกะทันหัน
+  state.dowagers.forEach(d => {
+    if (!d.alive) return;
+    if (state.empressDowager && d.id === state.empressDowager.id) return;
+    const suddenChance = d.inColdPalace ? 0.009 : 0.0045;
+    if (Math.random() < suddenChance) {
+      d.alive = false;
+      const isEd = d.rank === "ฮองไทเฮา";
+      const reason = d.inColdPalace
+        ? "สิ้นพระชนม์อย่างเดียวดายภายในตำหนักเย็น"
+        : "ประชวรกะทันหันไม่อาจยื้อชีวิตไว้ได้และสิ้นพระชนม์ลง";
+      addLog(`🕯️ เหตุไม่คาดคิดในวังหลัง! ${d.rank} ${d.name} ${isEd ? "" : "(สนมรุ่นก่อน) "}${reason} ในวัย ${d.age} ปี`, isEd ? "critical" : "important");
+    }
+  });
+
+  if (state.emperor.age < 15) return;
+
+  state.consorts.forEach(c => {
+    if (!c.alive) return;
+
+    if (c.confinedMonths > 0) {
+      c.confinedMonths--;
+      if (c.confinedMonths === 0) {
+        addLog(`ครบกำหนดการกักบริเวณ! ${c.rank} ${c.name} ได้รับอนุญาตให้ออกจากตำหนักส่วนตัวแล้ว`, "normal");
+      }
+    }
+
+    if (!c.pregnant) return;
+    c.pregMonths++;
+    const m = c.pregMonths;
+    const miscChance = m <= 6 ? 0.04 : 0.03;
+    if (Math.random() < miscChance) {
+      c.pregnant = false;
+      c.pregMonths = 0;
+      c.relation = Math.max(0, c.relation - 15);
+      if (m <= 6) {
+        addLog(`เกิดเรื่องเศร้าในวังหลัง! ${c.rank} ${c.name} แท้งพระโอรส/ธิดาในครรภ์เดือนที่ ${m} (ความสัมพันธ์ -15)`, "critical");
+      } else {
+        const motherDies = Math.random() < 0.45;
+        if (motherDies) {
+          c.alive = false;
+          addLog(`วิปโยคครั้งใหญ่! ${c.rank} ${c.name} ตกเลือดแท้งบุตรในเดือนที่ ${m} และสิ้นใจลงในตำหนัก!`, "critical");
+        } else {
+          c.health -= 30;
+          addLog(`เหตุวิกฤต! ${c.rank} ${c.name} แท้งบุตรในเดือนที่ ${m} อาการสาหัสแต่หมอหลวงยื้อชีวิตไว้ได้ทัน`, "critical");
+        }
+      }
+      return;
+    }
+
+    if (m >= 9) {
+      c.pregnant = false;
+      c.pregMonths = 0;
+      c.childrenCount++;
+      const childGender = Math.random() < 0.5 ? "ชาย" : "หญิง";
+      setSpeed(0);
+      const defaultName = `${state.dynasty} ${childGender === "ชาย" ? pick(GIVEN_NAMES_M) : pick(GIVEN_NAMES_F)}`;
+      const rankOrder = getRankObj(c.rank).order;
+      const needsFoster = rankOrder >= 6;
+
+      let fosterHtml = "";
+      if (needsFoster) {
+        let optionsHtml = `<option value="0|หอเสียงฟาง (หออภิบาลทารกหลวง)">🏯 หอเสียงฟาง (ส่งให้แม่นมหลวงเลี้ยงดู)</option>`;
+        
+        const highConsorts = getSortedConsorts(state.consorts.filter(x => x.alive && !x.inColdPalace && getRankObj(x.rank).order <= 5));
+        highConsorts.forEach(hc => {
+          optionsHtml += `<option value="${hc.id}|${hc.rank} ${hc.name}">🌸 มอบให้ ${hc.rank} ${hc.name} (สัมพันธ์:${hc.relation} | ความดี:${hc.stats.virtue}) เลี้ยงดู</option>`;
+        });
+
+        const activeEds = getAllActiveEmpressDowagers();
+        activeEds.forEach(ed => {
+          if (!ed.inColdPalace) {
+            optionsHtml += `<option value="${ed.id}|ฮองไทเฮา ${ed.name}">👑 มอบให้ ฮองไทเฮา ${ed.name} อภิบาล</option>`;
+          }
+        });
+
+        const aliveDowagers = getSortedConsorts(state.dowagers.filter(d => d.alive && !d.inColdPalace && d.rank !== "ฮองไทเฮา"));
+        aliveDowagers.forEach(dw => {
+          optionsHtml += `<option value="${dw.id}|${dw.rank} ${dw.name}">👵 มอบให้ ${dw.rank} ${dw.name} (สนมรุ่นก่อน) เลี้ยงดู</option>`;
+        });
+
+        fosterHtml = `
+          <div class="form-group" style="margin-top:12px; padding:12px; background:#1c1010; border:1px solid var(--gold); border-radius:5px;">
+            <label>⚠️ กฎมณเฑียรบาล: สนมขั้น "${c.rank}" ไม่มีสิทธิ์เลี้ยงดูบุตรเอง โปรดกำหนดสถานที่/ผู้เลี้ยงดู:</label>
+            <select id="child-foster-select">${optionsHtml}</select>
+          </div>
+        `;
+      }
+
+      openModal(
+        `🎉 ประสูติพระโอรส/พระธิดา!`,
+        `<p>${c.rank} <b>${c.name}</b> (${getConsortBriefInfo(c, true)}) ได้ให้กำเนิด <b>${childGender === "ชาย" ? "องค์ชาย" : "องค์หญิง"}</b> อย่างปลอดภัย!</p>
+         <div class="form-group"><label>โปรดพระราชทานพระนาม:</label><input type="text" id="new-child-name" value="${defaultName}"></div>
+         ${fosterHtml}`,
+        `<button onclick="confirmChildBirth(${c.id}, '${childGender}', ${needsFoster})">✅ ยืนยันพระนามและคำสั่ง</button>`,
+        { required: true, priority: true }
+      );
+    }
+  });
+}
+
+function confirmChildBirth(motherId, gender, needsFoster) {
+  const mother = state.consorts.find(c => c.id === motherId);
+  const nameInput = document.getElementById("new-child-name").value.trim() || "องค์ชาย/องค์หญิง";
+  
+  let raisedById = mother ? mother.id : 0;
+  let raisedByText = mother ? `พระมารดาผู้ให้กำเนิด (${mother.rank} ${mother.name})` : "หอเสียงฟาง (หออภิบาลทารกหลวง)";
+  if (needsFoster) {
+    const rawVal = document.getElementById("child-foster-select").value;
+    const parts = rawVal.split("|");
+    raisedById = parseInt(parts[0]) || 0;
+    raisedByText = parts[1] || "หอเสียงฟาง (หออภิบาลทารกหลวง)";
+  }
+
+  const initialRank = gender === "ชาย" ? (mother && mother.rank === "ฮองเฮา" ? PRINCE_RANKS[0] : PRINCE_RANKS[3]) : "องค์หญิง";
+  
+  const child = {
+    id: charIdCounter++,
+    name: nameInput,
+    gender,
+    motherName: mother ? `${mother.rank} ${mother.name}` : "พระสนมในวัง",
+    motherId: mother ? mother.id : 0,
+    raisedById,
+    raisedBy: raisedByText,
+    rank: initialRank,
+    age: 0,
+    alive: true,
+    stats: { knowledge: rand(20, 50), combat: rand(20, 50), virtue: rand(30, 60) },
+    relation: 70,
+    married: false,
+    marriageResidence: null,
+    genBorn: state.generation
+  };
+  state.children.push(child);
+
+  if (gender === "ชาย" && mother && mother.rank === "ฮองเฮา" && !state.crownPrinceId) {
+    state.crownPrinceId = child.id;
+    child.rank = "องค์รัชทายาท (หวงไท่จื่อ)";
+    addLog(`ฮองเฮา ${mother.name} ประสูติพระโอรสองค์แรก "${child.name}" ได้รับการสถาปนาเป็นองค์รัชทายาทโดยอัตโนมัติ!`, "important");
+  } else {
+    const fosterMsg = needsFoster ? ` และมีรับสั่งให้ส่งไปเลี้ยงดูที่ "${raisedByText}"` : "";
+    addLog(`${mother ? mother.rank + " " + mother.name : "พระสนม"} ประสูติ${gender === "ชาย" ? "องค์ชาย" : "องค์หญิง"} "${child.name}"${fosterMsg}`, "important");
+  }
+  closeModal();
+  updateUI();
+  setSpeed(1);
+}
+
+// ==================== WEEKLY EVENTS (AGE-APPROPRIATE LOGIC) ====================
+function processWeeklyEvents() {
+  const empAge = state.emperor.age;
+  const regent = getActiveRegent();
+  const regentName = regent ? regent.shortTitle : "ฮองไทเฮา";
+  const roll = Math.random();
+
+  if (empAge < 15) {
+    if (roll < 0.55) {
+      const childRoutines = empAge <= 6 ? [
+        `แม่นมและนางกำนัลช่วยกันสวมฉลองพระองค์ให้ยุวกษัตริย์ ${state.emperor.name} (อายุ ${empAge} ปี) ก่อนเสด็จไปถวายบังคม ${regentName}`,
+        `ฮ่องเต้น้อยทรงเล่นลูกข่างไม้และตุ๊กตาดินเผาในตำหนักอย่างร่าเริง โดยมีขันทีน้อยคอยเฝ้าดูแลอย่างใกล้ชิด`,
+        `${regentName}เสด็จออกว่าราชการหลังม่านไม้ไผ่ แทนยุวกษัตริย์ที่ประทับบนบัลลังก์มังกร`,
+        `หมอหลวงตรวจพระพลานามัยประจำสัปดาห์และถวายน้ำแกงบำรุงสำหรับเด็ก`,
+        `ฮ่องเต้น้อยทรงหัดคัดตัวอักษรจีนพื้นฐานตัวแรกๆ กับราชครูด้วยพู่กันด้ามเล็ก`,
+        `เสด็จเดินเล่นชมปลาทองและให้อาหารนกในอุทยานหลวงพร้อมพระพี่เลี้ยง`
+      ] : [
+        `ยุวกษัตริย์ ${state.emperor.name} (อายุ ${empAge} ปี) เสด็จเข้าห้องทรงพระอักษรซ่างซูฝางแต่เช้าตรู่เพื่อท่องจำคัมภีร์ขงจื๊อ`,
+        `ทรงฝึกขี่ม้าแกลบและหัดยิงธนูเด็กในลานฝึกหลวงร่วมกับองครักษ์หนุ่ม`,
+        `${regentName}ทรงตรวจฎีกาและว่าราชการแผ่นดินแทนฮ่องเต้ที่ยังทรงพระเยาว์`,
+        `ทรงเล่นเกมหมากล้อมและชักว่าวในอุทยานหลวงร่วมกับเหล่ามหาดเล็กวัยเดียวกัน`,
+        `ราชครูถวายรายงานความก้าวหน้าด้านการอ่านเขียนและกิริยามารยาทแด่ ${regentName}`,
+        `ทรงร่วมพิธีเซ่นไหว้บรรพบุรุษตามโบราณราชประเพณีภายใต้การดูแลของขุนนางพิธีการ`
+      ];
+      addLog(pick(childRoutines), "normal");
+      if (Math.random() < 0.25) {
+        state.treasury += 45000;
+        addLog("การจัดเก็บภาษีเกลือและข้าวในมณฑลเจียงหนานราบรื่น ท้องพระคลังรับเพิ่ม +45,000 ตำลึง", "normal");
+      }
+      return;
+    }
+
+    if (roll < 0.75) {
+      triggerChildhoodDecisionEvent();
+      return;
+    }
+
+    triggerEmperorDecisionEvent();
+    return;
+  }
+
+  if (roll < 0.42) {
+    const routines = [
+      "ตื่นบรรทมตอนตี 4 ด้วยเสียงตบมือของขันที ถวายพระพรผู้ใหญ่ในวัง และตรวจชิมพระกระยาหารด้วยเข็มเงิน",
+      "เสด็จออกว่าราชการเช้า (Zaochao) ทรงใช้พู่กันแดง (Zhubi) อนุมัติฎีกาความลับจากหัวเมือง",
+      "ทรงพระอักษร ฝึกคัดลายมือพู่กันจีน และสนทนาธรรมกับอาจารย์หลวง ณ ตำหนักศึกษา",
+      "ประกอบพิธีเซ่นไหว้บรรพบุรุษ ณ หอศาลเจ้าบรรพชน (Taimiao) เสริมสิริมงคลแผ่นดิน",
+      "ตรวจพลประเมินกองกำลังทหารแปดกองธง (Baqi) และซ้อมยิงธนูในลานฝึกหลวง",
+      "ตรวจสอบการศึกษาและการยิงธนูของเหล่าองค์ชาย ณ สำนักเรียนซ่างซูฝาง",
+      "เสด็จประพาสอุทยานหยวนหมิงหยวน ทรงแต่งบทกวีและชมการแสดงงิ้วหลวง",
+      "เรียกประชุมสภาขุนนางชั้นผู้ใหญ่ (Junji Chu) เพื่อหารือข้อราชการชายแดน",
+      "ทรงตรวจสอบบัญชีรายจ่ายฝ่ายในและเบี้ยหวัดเงินปีของเจ้านายในวังหลัง",
+      "ประทับตราพระลัญจกรลงบนภาพเขียนโบราณและของสะสมล้ำค่าในท้องพระคลัง",
+      "เสด็จเยี่ยมโรงหล่อสิ่งของหลวงและตรวจงานช่างฝีมือประดิษฐ์เครื่องกระเบื้อง",
+      "ทรงอ่านรายงานสภาพอากาศ ปริมาณน้ำฝน และราคาข้าวทั่วแผ่นดิน"
+    ];
+    addLog(pick(routines), "normal");
+    if (Math.random() < 0.25) {
+      state.treasury += 45000;
+      addLog("การจัดเก็บภาษีเกลือและข้าวในมณฑลเจียงหนานราบรื่น ท้องพระคลังรับเพิ่ม +45,000 ตำลึง", "normal");
+    }
+    return;
+  }
+
+  const eligibleForNight = state.consorts.filter(c => c.alive && !c.inColdPalace && c.confinedMonths === 0 && c.rank !== "นางใน" && c.rank !== "สามัญชน");
+  if (roll < 0.60 && eligibleForNight.length > 0) {
+    triggerNightService();
+    return;
+  }
+
+  if (roll < 0.80) {
+    if (Math.random() < 0.30) {
+      if (Math.random() < 0.55) {
+        state.emperor.health = Math.min(100, state.emperor.health + 3);
+        addLog("หมอหลวงถวายพระโอสถบำรุงและทรงออกกำลังกายยิงธนู สุขภาพฮ่องเต้ฟื้นฟู +3", "normal");
+      } else {
+        state.emperor.health = Math.max(5, state.emperor.health - 4);
+        addLog("ทรงโหมงานหนักตรวจฎีกาจนดึกดื่นและทรงพระประชวรไข้หวัด สุขภาพลดลง -4", "critical");
+      }
+    } else {
+      triggerEmperorDecisionEvent();
+    }
+    return;
+  }
+
+  triggerHaremOrChildEvent();
+}
+
+function triggerChildhoodDecisionEvent() {
+  setSpeed(0);
+  const empAge = state.emperor.age;
+  const regent = getActiveRegent();
+  const regentTitle = regent ? regent.shortTitle : "ฮองไทเฮา";
+
+  const kidEvents = [
+    {
+      title: "📖 บทเรียนในห้องทรงพระอักษรซ่างซูฝาง",
+      desc: `วันนี้ราชครูถวายบทเรียนคัมภีร์โบราณและประวัติศาสตร์ราชวงศ์ ยุวกษัตริย์ ${state.emperor.name} (อายุ ${empAge} ปี) ทรงรู้สึกง่วงบรรทมอย่างยิ่ง`,
+      opt1: { text: "ตั้งพระทัยท่องจำจนจบด้วยความอดทน (ความรู้ +5, ขุนนางซ้าย +5)", fn: () => { state.emperor.stats.knowledge += 5; modPop({ left: 5 }); addLog(`ฮ่องเต้น้อยทรงตั้งพระทัยเรียนหนังสือจนราชครูเอ่ยปากชม (ความรู้ +5)`, "normal"); } },
+      opt2: { text: "แอบหนีออกไปวิ่งเล่นจับจิ้งหรีดในสวนกับขันทีน้อย (สุขภาพ +2, ความรู้ -2)", fn: () => { state.emperor.health = Math.min(100, state.emperor.health + 2); state.emperor.stats.knowledge = Math.max(0, state.emperor.stats.knowledge - 2); addLog(`ฮ่องเต้น้อยแอบหนีเรียนไปวิ่งเล่นในอุทยาน ถูก${regentTitle}ดุเบาๆ`, "normal"); } }
+    },
+    {
+      title: "🏹 การฝึกยิงธนูและขี่ม้าของลูกหลานแมนจู",
+      desc: `แม่ทัพกองธงจัดเตรียมม้าแกลบและธนูขนาดเล็กถวายให้ยุวกษัตริย์ฝึกฝนตามประเพณีชาวแมนจู`,
+      opt1: { text: "ฝึกยิงธนูอย่างขยันขันแข็งจนมือพอง (การรบ +5, ชาวแมนจู +8)", fn: () => { state.emperor.stats.combat += 5; modPop({ manchu: 8 }); addLog(`ฮ่องเต้น้อยทรงฝึกยิงธนูอย่างไม่ย่อท้อ เหล่าแม่ทัพแมนจูต่างชื่นชม (การรบ +5)`, "important"); } },
+      opt2: { text: "พักผ่อนเสวยขนมหวานในพลับพลา (สุขภาพ +3, ชาวแมนจู -3)", fn: () => { state.emperor.health = Math.min(100, state.emperor.health + 3); modPop({ manchu: -3 }); } }
+    },
+    {
+      title: "🍬 ขนมมงคลในตำหนักของ" + regentTitle,
+      desc: `${regentTitle}ทรงเรียกยุวกษัตริย์เข้าเฝ้าเพื่อสอบถามสารทุกข์สุกดิบและประทานขนมมงคล`,
+      opt1: { text: "แบ่งขนมให้เหล่าขันทีและนางกำนัลเด็กกินด้วย (ความดี +5, สุขภาพ +2)", fn: () => { state.emperor.stats.virtue += 5; state.emperor.health = Math.min(100, state.emperor.health + 2); addLog(`ฮ่องเต้น้อยทรงมีน้ำพระทัยแบ่งปันขนมให้ข้ารับใช้ในตำหนัก (ความดี +5)`, "normal"); } },
+      opt2: { text: "เสวยคนเดียวจนอิ่มแปล้ (สุขภาพ +1)", fn: () => { state.emperor.health = Math.min(100, state.emperor.health + 1); } }
+    },
+    {
+      title: "🤒 อาการไข้หวัดตามฤดูกาลในวัยเยาว์",
+      desc: `อากาศในเมืองหลวงเปลี่ยนแปลงกะทันหัน ฮ่องเต้น้อยทรงมีพระอาการไอและตัวรุมๆ`,
+      opt1: { text: "เสวยยาต้มสมุนไพรขมปี๋ของหมอหลวงแต่โดยดี (สุขภาพ +5)", fn: () => { state.emperor.health = Math.min(100, state.emperor.health + 5); addLog(`ฮ่องเต้น้อยยอมเสวยพระโอสถขมแต่โดยดี อาการไข้หายเป็นปลิดทิ้ง`, "normal"); } },
+      opt2: { text: "งอแงไม่ยอมเสวยยา (สุขภาพ -4)", fn: () => { state.emperor.health = Math.max(10, state.emperor.health - 4); addLog(`ฮ่องเต้น้อยทรงเบือนพระพักตร์หนีถ้วยยา ทำให้หายประชวรช้าลง`, "normal"); } }
+    }
+  ];
+
+  const ev = pick(kidEvents);
+  window._tempKidEv = ev;
+  openModal(
+    ev.title,
+    `<p>${ev.desc}</p>`,
+    `<button onclick="window._tempKidEv.opt1.fn(); closeModal(); updateUI(); setSpeed(1);">${ev.opt1.text}</button>
+     <button onclick="window._tempKidEv.opt2.fn(); closeModal(); updateUI(); setSpeed(1);">${ev.opt2.text}</button>`
+  );
+}
+
+function getConsortBriefInfo(c, useHtml = true) {
+  return `ความสัมพันธ์: ${c.relation} | ความดี: ${c.stats.virtue} | ${formatConsortChildrenText(c.id, useHtml)}`;
+}
+
+function triggerNightService() {
+  if (state.emperor.age < 15) return;
+  const available = state.consorts.filter(c => c.alive && !c.inColdPalace && c.confinedMonths === 0 && c.rank !== "นางใน" && c.rank !== "สามัญชน");
+  if (available.length === 0) return;
+  const target = pick(available);
+  const isHigh = HIGH_CONSORT_RANKS.includes(target.rank);
+
+  if (isHigh) {
+    setSpeed(0);
+    openModal(
+      "🌙 ยามค่ำคืน ณ ตำหนักฝ่ายใน",
+      `<p>คืนนี้ฮ่องเต้เสด็จไปหา <b>${target.rank} ${target.name}</b><br>
+       <span style="font-size:12px; color:var(--gold);">(${getConsortBriefInfo(target, true)})</span></p>
+       <p>พระองค์จะทรงประทับค้างคืนด้วยหรือไม่?</p>`,
+      `<button onclick="resolveNightService(${target.id}, true)">ประทับค้างคืนด้วย (+ความสัมพันธ์, ลุ้นมีทายาท)</button>
+       <button onclick="resolveNightService(${target.id}, false)">เสด็จกลับตำหนักบรรทม (-ความสัมพันธ์เล็กน้อย)</button>`
+    );
+  } else {
+    addLog(`คืนนี้ขันทีพลิกป้ายเลือก "${target.rank} ${target.name}" (${getConsortBriefInfo(target, false)}) ห่อผ้าห่มขนสัตว์เข้าถวายการรับใช้`, "normal");
+    resolveNightService(target.id, true, true);
+  }
+}
+
+function resolveNightService(consortId, stayed, silent = false) {
+  const c = state.consorts.find(x => x.id === consortId);
+  if (!c) { if (!silent) closeModal(); return; }
+
+  if (!stayed) {
+    c.relation = Math.max(0, c.relation - 5);
+    addLog(`คืนนี้ฮ่องเต้เสด็จไปหา ${c.rank} ${c.name} แต่เสด็จกลับตำหนักบรรทมก่อน (ความสัมพันธ์ -5)`, "normal");
+    closeModal(); updateUI(); setSpeed(1);
+    return;
+  }
+
+  const moodRoll = Math.random();
+  if (moodRoll < 0.5) {
+    c.relation = Math.min(100, c.relation + 5);
+    addLog(`คืนนี้ฮ่องเต้ดูมีความสุขกับ ${c.rank} ${c.name} (ความสัมพันธ์ +5)`, "normal");
+  } else if (moodRoll < 0.85) {
+    addLog(`คืนนี้ฮ่องเต้ดูเฉยๆ กับ ${c.rank} ${c.name} ขันทีร้องเตือนหมดเวลาการรับใช้`, "normal");
+  } else {
+    c.relation = Math.max(0, c.relation - 4);
+    addLog(`คืนนี้ฮ่องเต้ดูไม่พอใจ ${c.rank} ${c.name} (ความสัมพันธ์ -4)`, "normal");
+  }
+
+  if (!c.pregnant && c.age <= 42 && Math.random() < 0.25) {
+    if (!silent) closeModal();
+    setSpeed(0);
+    openModal(
+      "🩺 หมอหลวงตรวจพบชีพจรมงคล!",
+      `<p><b>${c.rank} ${c.name}</b> ตั้งครรภ์แล้ว!<br>
+       <span style="font-size:12px; color:var(--gold);">(${getConsortBriefInfo(c, true)})</span></p>
+       <p>พระองค์จะทรงตัดสินพระทัยอย่างไร?</p>`,
+      `<button onclick="decidePregnancy(${c.id}, true)">เก็บพระโอรส/ธิดาองค์นี้ไว้</button>
+       <button class="btn-danger" onclick="decidePregnancy(${c.id}, false)">ไม่เก็บไว้ (พระราชทานยาขับ)</button>`,
+      { required: true }
+    );
+    return;
+  }
+
+  if (!silent) { closeModal(); updateUI(); setSpeed(1); }
+}
+
+function decidePregnancy(consortId, keep) {
+  const c = state.consorts.find(x => x.id === consortId);
+  if (keep) {
+    c.pregnant = true;
+    c.pregMonths = 1;
+    c.relation = Math.min(100, c.relation + 10);
+    addLog(`ฮ่องเต้ทรงยินดียิ่ง! มีรับสั่งให้บำรุงครรภ์ ${c.rank} ${c.name} อย่างดีที่สุด (ความสัมพันธ์ +10)`, "important");
+  } else {
+    c.relation = Math.max(0, c.relation - 35);
+    addLog(`ฮ่องเต้มีรับสั่งลับให้ ${c.rank} ${c.name} ดื่มยาขับเลือด! นางเสียใจอย่างแสนสาหัส (ความสัมพันธ์ -35)`, "critical");
+  }
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+// ==================== EXPANDED HAREM EVENTS & PUNISHMENTS (AGE >= 15 ONLY) ====================
+function triggerHaremOrChildEvent() {
+  if (state.emperor.age < 15) return;
+
+  const activeConsorts = state.consorts.filter(c => c.alive && !c.inColdPalace && c.rank !== "สามัญชน");
+  const aliveChildren = state.children.filter(ch => ch.alive);
+
+  if (activeConsorts.length >= 1 && Math.random() < 0.70) {
+    const subRoll = Math.random();
+
+    if (subRoll < 0.48) {
+      const c = pick(activeConsorts);
+      const positiveHaremEvents = [
+        {
+          title: "🍵 พระสนมถวายน้ำแกงบำรุงยามดึก",
+          desc: `<b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}) ตั้งใจตุ๋นน้ำแกงโสมด้วยตนเองมาถวายที่หน้าตำหนักทรงพระอักษร`,
+          opt1: { text: "เสวยน้ำแกงและเอ่ยปากชมเชย (ความสัมพันธ์ +8)", fn: () => { c.relation = Math.min(100, c.relation + 8); addLog(`${c.rank} ${c.name} ถวายน้ำแกงโสม ฮ่องเต้ทรงพอพระทัย (ความสัมพันธ์ +8)`, "normal"); } },
+          opt2: { text: "รับไว้ตามมารยาทแต่ไม่ให้เข้าเฝ้า (ความสัมพันธ์ -2)", fn: () => { c.relation = Math.max(0, c.relation - 2); } }
+        },
+        {
+          title: "🎶 การแสดงดนตรีและร่ายรำในอุทยาน",
+          desc: `<b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}) ฝึกซ้อมพิณกู่เจิงและร่ายรำถวายหน้าพระพักตร์อย่างงดงาม`,
+          opt1: { text: "พระราชทานผ้าไหมและเครื่องประดับรางวัล (-30,000 ตำลึง | ความสัมพันธ์ +12)", fn: () => { state.treasury -= 30000; c.relation = Math.min(100, c.relation + 12); addLog(`พระราชทานรางวัลให้ ${c.rank} ${c.name} ที่บรรเลงพิณได้ไพเราะ (ความสัมพันธ์ +12)`, "important"); } },
+          opt2: { text: "ปรบมือชื่นชมด้วยวาจา (ความสัมพันธ์ +5)", fn: () => { c.relation = Math.min(100, c.relation + 5); } }
+        },
+        {
+          title: "📖 พระสนมช่วยดูแลและอบรมสั่งสอนองค์ชาย/องค์หญิง",
+          desc: `<b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}) ช่วยดูแลพระพลานามัยและกิริยามารยาทของเหล่าทายาทในวังหลังอย่างเอาใจใส่`,
+          opt1: { text: "ยกย่องความมีเมตตาต่อหน้าฝ่ายใน (ความสัมพันธ์ +10, ความดี +5)", fn: () => { c.relation = Math.min(100, c.relation + 10); c.stats.virtue += 5; addLog(`${c.rank} ${c.name} ได้รับคำชมเชยเรื่องความเมตตาดูแลทายาทวังหลัง`, "normal"); } },
+          opt2: { text: "รับทราบรายงานเงียบๆ (ความสัมพันธ์ +3)", fn: () => { c.relation = Math.min(100, c.relation + 3); } }
+        },
+        {
+          title: "🪡 พระสนมปักฉลองพระองค์และถุงหอมถวาย",
+          desc: `<b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}) อดหลับอดนอนปักลายมังกรบนฉลองพระองค์และถุงหอมสมุนไพรมาถวาย`,
+          opt1: { text: "สวมใส่ฉลองพระองค์และพกถุงหอมติดตัว (ความสัมพันธ์ +10)", fn: () => { c.relation = Math.min(100, c.relation + 10); addLog(`ฮ่องเต้ทรงสวมฉลองพระองค์ที่ ${c.rank} ${c.name} ปักถวาย นางปลาบปลื้มใจยิ่งนัก`, "normal"); } },
+          opt2: { text: "เก็บเข้าคลังหลวง (ความสัมพันธ์ -1)", fn: () => { c.relation = Math.max(0, c.relation - 1); } }
+        },
+        {
+          title: "🙏 พระสนมสวดมนต์คัดพระสูตรขอพรให้แผ่นดิน",
+          desc: `<b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}) ถือศีลกินเจและคัดพระสูตรถวายพระพรให้ฮ่องเต้ทรงพระเกษมสำราญ`,
+          opt1: { text: "ชื่นชมในความกตัญญูและศรัทธา (ความสัมพันธ์ +7, ความดี +4)", fn: () => { c.relation = Math.min(100, c.relation + 7); c.stats.virtue += 4; } },
+          opt2: { text: "รับทราบรายงาน (ความสัมพันธ์ +2)", fn: () => { c.relation = Math.min(100, c.relation + 2); } }
+        }
+      ];
+      const ev = pick(positiveHaremEvents);
+      setSpeed(0);
+      window._tempHaremEv = ev;
+      openModal(
+        ev.title,
+        `${getRegentNotice()}<p>${ev.desc}</p>`,
+        `<button onclick="window._tempHaremEv.opt1.fn(); closeModal(); updateUI(); setSpeed(1);">${ev.opt1.text}</button>
+         <button onclick="window._tempHaremEv.opt2.fn(); closeModal(); updateUI(); setSpeed(1);">${ev.opt2.text}</button>`
+      );
+      return;
+    }
+
+    if (subRoll < 0.92 && activeConsorts.length >= 2) {
+      const culprit = pick(activeConsorts);
+      const victim = pick(activeConsorts.filter(c => c.id !== culprit.id));
+      const minorConflicts = [
+        {
+          title: "💢 เหตุทะเลาะวิวาทแย่งชิงผ้าไหมพระราชทาน",
+          desc: `<b>${culprit.rank} ${culprit.name}</b> (${getConsortBriefInfo(culprit, true)}) ไม่พอใจที่ <b>${victim.rank} ${victim.name}</b> (${getConsortBriefInfo(victim, true)}) ได้รับผ้าไหมลายหงส์ จึงพูดจาเสียดสีและสั่งคนขวางเกี้ยวกลางทาง!`
+        },
+        {
+          title: "💢 การฝ่าฝืนกฎระเบียบและมาเข้าเฝ้าผู้ใหญ่สาย",
+          desc: `<b>${culprit.rank} ${culprit.name}</b> (${getConsortBriefInfo(culprit, true)}) อ้างว่าประชวรไม่ยอมไปถวายพระพรยามเช้า และแสดงกิริยากระด้างกระเดื่องต่อ <b>${victim.rank} ${victim.name}</b> (${getConsortBriefInfo(victim, true)})`
+        },
+        {
+          title: "💢 ข่าวลือเสียหายและหักเบี้ยหวัดนางกำนัล",
+          desc: `ตรวจพบว่าตำหนักของ <b>${culprit.rank} ${culprit.name}</b> (${getConsortBriefInfo(culprit, true)}) หักเบี้ยหวัดนางกำนัลและปล่อยข่าวลือให้ร้าย <b>${victim.rank} ${victim.name}</b> (${getConsortBriefInfo(victim, true)})`
+        },
+        {
+          title: "💢 โต้เถียงเรื่องลำดับที่นั่งในงานเลี้ยงชมบุปผา",
+          desc: `<b>${culprit.rank} ${culprit.name}</b> (${getConsortBriefInfo(culprit, true)}) ถือดีว่าตนเป็นที่โปรดปราน จึงแย่งที่นั่งของ <b>${victim.rank} ${victim.name}</b> (${getConsortBriefInfo(victim, true)}) จนเกิดปากเสียงต่อหน้าพระพักตร์!`
+        }
+      ];
+      const ev = pick(minorConflicts);
+      setSpeed(0);
+      openModal(
+        ev.title,
+        `${getRegentNotice()}<p>${ev.desc}</p><p>พระองค์จะทรงลงพระอาญาอย่างไร? (ทุกการลงโทษมีผลต่อค่าความสัมพันธ์)</p>`,
+        renderPunishmentButtons(culprit)
+      );
+      return;
+    }
+
+    if (activeConsorts.length >= 2) {
+      const culprit = pick(activeConsorts);
+      const victim = pick(activeConsorts.filter(c => c.id !== culprit.id));
+      const severeSchemes = [
+        {
+          title: "☠️ คดีอุกฉกรรจ์: ลอบวางยาพิษในเครื่องเสวย!",
+          desc: `ขันทีห้องเครื่องจับได้คาหนังคาเขาว่าคนของ <b>${culprit.rank} ${culprit.name}</b> (${getConsortBriefInfo(culprit, true)}) ลอบใส่ผงพิษร้ายแรงลงในถ้วยยาของ <b>${victim.rank} ${victim.name}</b> (${getConsortBriefInfo(victim, true)})!`
+        },
+        {
+          title: "☠️ คดีต้องห้าม: พบตุ๊กตาสาปแช่งฝังใต้ตำหนัก!",
+          desc: `องครักษ์ขุดพบตุ๊กตาคุณไสยฝังอยู่ใต้พื้นตำหนักของ <b>${victim.rank} ${victim.name}</b> (${getConsortBriefInfo(victim, true)}) โดยมีหลักฐานมัดตัว <b>${culprit.rank} ${culprit.name}</b> (${getConsortBriefInfo(culprit, true)}) ว่าเป็นผู้ทำพิธีสาปแช่ง!`
+        }
+      ];
+      const ev = pick(severeSchemes);
+      setSpeed(0);
+      openModal(
+        ev.title,
+        `${getRegentNotice()}<p style="color:#ff8080;">${ev.desc}</p><p>คดีนี้ร้ายแรงนัก พระองค์จะทรงตัดสินพระอาญาอย่างไร?</p>`,
+        renderPunishmentButtons(culprit)
+      );
+      return;
+    }
+  }
+
+  if (aliveChildren.length > 0) {
+    const ch = pick(aliveChildren);
+    const curMotherStr = getLatestMotherDisplay(ch, false);
+    const cRoll = Math.random();
+    if (cRoll < 0.35) {
+      const severe = Math.random() < 0.25;
+      if (severe && Math.random() < 0.3) {
+        ch.alive = false;
+        if (state.crownPrinceId === ch.id) state.crownPrinceId = null;
+        addLog(`ข่าวร้าย! ${ch.rank} ${ch.name} (มารดา: ${curMotherStr}) ประชวรหนักด้วยไข้ทรพิษและสิ้นพระชนม์ลง!`, "critical");
+      } else {
+        ch.health -= 20;
+        addLog(`${ch.rank} ${ch.name} (มารดา: ${curMotherStr}) ประชวรไข้หวัดใหญ่ หมอหลวงเร่งถวายการรักษา`, "important");
+      }
+    } else if (cRoll < 0.7) {
+      ch.stats.virtue += 10;
+      ch.stats.knowledge += 8;
+      addLog(`${ch.rank} ${ch.name} (มารดา: ${curMotherStr}) อาสาช่วยงานการกุศลและท่องจำคัมภีร์ได้แม่นยำ (ความดี +10, ความรู้ +8)`, "important");
+    } else if (ch.age >= 15) {
+      ch.stats.virtue = Math.max(0, ch.stats.virtue - 10);
+      addLog(`${ch.rank} ${ch.name} (มารดา: ${curMotherStr}) แอบหนีออกจากวังไปเที่ยวหอนางโลม ถูกผู้ตรวจการจับได้ (ความดี -10)`, "critical");
+    }
+  }
+}
+
+function renderPunishmentButtons(culprit) {
+  const confineMonths = rand(3, 12);
+  return `
+    <button onclick="punishConsort(${culprit.id}, 'cut_allowance')">💰 ตัดเบี้ยหวัด 6 เดือน (ความสัมพันธ์ -10)</button>
+    <button onclick="punishConsort(${culprit.id}, 'copy_scripture')">📜 สั่งคัดคัมภีร์สำนึกตน (ความสัมพันธ์ -8, ความดี +5)</button>
+    <button onclick="punishConsort(${culprit.id}, 'confine', ${confineMonths})">🚪 กักบริเวณในตำหนักส่วนตัว ${confineMonths} เดือน (ห้ามพบฮ่องเต้, สัมพันธ์ -15)</button>
+    <button onclick="punishConsort(${culprit.id}, 'demote')">⬇️ ลดขั้นลง 1 ระดับ (ความสัมพันธ์ -20)</button>
+    <button onclick="punishConsort(${culprit.id}, 'cold')">❄️ ถอดยศขังตำหนักเย็น (ความสัมพันธ์ -35)</button>
+    <button class="btn-danger" onclick="punishConsort(${culprit.id}, 'execute')">⚔️ ประหารชีวิตทันที</button>
+    <button onclick="punishConsort(${culprit.id}, 'forgive')">🕊️ ว่ากล่าวตักเตือนและอภัยโทษ (ความสัมพันธ์ +5)</button>
+  `;
+}
+
+// ==================== EMPEROR / REGENT STATE AFFAIRS EVENTS ====================
+function triggerEmperorDecisionEvent() {
+  setSpeed(0);
+  const empAge = state.emperor.age;
+  const regent = getActiveRegent();
+  const actorLabel = regent ? `${regent.shortTitle} (ว่าราชการแทนฮ่องเต้)` : "ฮ่องเต้";
+
+  if (empAge >= 15 && Math.random() < 0.16) {
+    const mConsort = generatePerson("หญิง", "ท่านหญิงเผ่ามองโกล", "ผิน", rand(16, 21), null, "พันธมิตรมองโกล");
+    openModal(
+      "🐎 ทูตมองโกลถวายบุตรีเพื่อเชื่อมสัมพันธไมตรี",
+      `${getRegentNotice()}<p>ผู้นำเผ่ามองโกลได้ส่งท่านหญิง <b>${mConsort.name}</b> (อายุ ${mConsort.age} ปี | ความสัมพันธ์เริ่มต้น: ${mConsort.relation} | ความดี: ${mConsort.stats.virtue}) มาถวายตัวเป็นพระสนม</p>`,
+      `<button onclick='acceptMongolConsort(${JSON.stringify(mConsort)})'>รับเข้าวังแต่งตั้งเป็น "ผิน" (+ความนิยมต่างเมือง & แมนจู)</button>
+       <button onclick="rejectMongolConsort()">ปฏิเสธส่งตัวกลับ (-ความนิยมต่างเมือง)</button>`
+    );
+    return;
+  }
+
+  let emperorEvents = [
+    {
+      title: "🌊 อุทกภัยแม่น้ำฮวงโหแตก!",
+      desc: "น้ำท่วมพื้นที่เกษตรกรรมชาวฮั่นเสียหายหนัก ขุนนางฝ่ายซ้ายเสนอให้เปิดคลังหลวงแจกข้าวและเงินเยียวยา",
+      opt1: { text: "อนุมัติงบเยียวยา (-200,000 ตำลึง | ชาวฮั่น +15, ขุนนางซ้าย +10)", fn: () => { state.treasury -= 200000; modPop({ han: 15, left: 10 }); addLog(`${actorLabel} อนุมัติงบหลวงเยียวยาอุทกภัยแม่น้ำฮวงโห ราษฎรชาวฮั่นซาบซึ้งใจ`, "important"); } },
+      opt2: { text: "ปฏิเสธเพราะท้องพระคลังตึงตัว (ชาวฮั่น -15, ขุนนางขวา +5)", fn: () => { modPop({ han: -15, right: 5 }); addLog(`${actorLabel} ปฏิเสธงบเยียวยาน้ำท่วม ชาวฮั่นเดือดร้อนหนัก`, "critical"); } }
+    },
+    {
+      title: "⚖️ ฎีการ้องเรียนขุนนางกังฉินยักยอกเสบียง",
+      desc: "ผู้ตรวจการลับถวายฎีกาแฉว่าเจ้าเมืองมณฑลซานตงยักยอกเงินภาษีและเสบียงหลวงไปกว่า 300,000 ตำลึง",
+      opt1: { text: "สั่งปลดและริบทรัพย์เข้าคลังหลวง (+300,000 ตำลึง | ชาวฮั่น +10, ขุนนางขวา -8)", fn: () => { state.treasury += 300000; modPop({ han: 10, right: -8 }); addLog(`${actorLabel} สั่งกวาดล้างขุนนางทุจริตและริบทรัพย์เข้าคลัง +300,000 ตำลึง!`, "important"); } },
+      opt2: { text: "ไว้หน้าตระกูลขุนนางเก่าแก่ สั่งปรับเงินเงียบๆ (+100,000 ตำลึง | ขุนนางขวา +8, ชาวฮั่น -6)", fn: () => { state.treasury += 100000; modPop({ right: 8, han: -6 }); } }
+    },
+    {
+      title: "📚 เปิดการสอบคัดเลือกจอหงวนทั่วแผ่นดิน",
+      desc: "บัณฑิตชาวฮั่นและแมนจูเดินทางเข้าเมืองหลวงเพื่อร่วมการสอบหน้าพระที่นั่ง (Dianshi)",
+      opt1: { text: "จัดสอบอย่างยิ่งใหญ่และคัดเลือกคนเก่งโดยไม่แบ่งแยกเชื้อชาติ (-100,000 ตำลึง | ชาวฮั่น +12, ขุนนางซ้าย +10, แมนจู -5)", fn: () => { state.treasury -= 100000; state.emperor.stats.knowledge += 4; modPop({ han: 12, left: 10, manchu: -5 }); addLog(`${actorLabel} จัดสอบคัดเลือกจอหงวนอย่างยุติธรรม บัณฑิตทั่วหล้าสรรเสริญ`, "important"); } },
+      opt2: { text: "สงวนโควตาตำแหน่งสำคัญให้ลูกหลานแปดกองธง (แมนจู +12, ชาวฮั่น -10)", fn: () => { modPop({ manchu: 12, han: -10 }); } }
+    },
+    {
+      title: "🎁 ทูตตะวันตกนำนาฬิกาไขลานและแผนที่โลกมาถวาย",
+      desc: "คณะบาทหลวงและพ่อค้าตะวันตกขอเข้าเฝ้าเพื่อเจรจาการค้าและแลกเปลี่ยนวิทยาการ",
+      opt1: { text: "ต้อนรับอย่างสมเกียรติ (-50,000 ตำลึง | ต่างเมือง +15, ความรู้ฮ่องเต้ +5)", fn: () => { state.treasury -= 50000; state.emperor.stats.knowledge += 5; modPop({ foreign: 15 }); } },
+      opt2: { text: "ปิดด่านกักกันไม่คบค้าต่างชาติ (แมนจู +8, ต่างเมือง -12)", fn: () => { modPop({ manchu: 8, foreign: -12 }); } }
+    },
+    {
+      title: "🌾 ภัยแล้งในมณฑลเหอหนาน ขุนนางขอให้ลดหย่อนภาษี",
+      desc: "ราษฎรประสบภัยแล้งติดต่อกัน 3 เดือน ขุนนางท้องถิ่นขอให้ยกเว้นภาษีรัชศกนี้",
+      opt1: { text: "ยกเว้นภาษีให้ราษฎร (ชาวฮั่น +14, ชาวแมนจู +5, ขุนนางซ้าย +8)", fn: () => { modPop({ han: 14, manchu: 5, left: 8 }); addLog(`${actorLabel} ทรงเมตตายกเว้นภาษีให้ราษฎรผู้ประสบภัยแล้ง`, "important"); } },
+      opt2: { text: "เก็บภาษีตามเดิมเพื่อบำรุงกองทัพ (+150,000 ตำลึง | ชาวฮั่น -14, ขุนนางขวา +6)", fn: () => { state.treasury += 150000; modPop({ han: -14, right: 6 }); } }
+    },
+    {
+      title: "🏯 การปะทะทางความคิดระหว่างขุนนางฝ่ายซ้ายและขวา",
+      desc: "ขุนนางฝ่ายซ้ายเน้นการปฏิรูปการศึกษาและลดงบทหาร ส่วนขุนนางฝ่ายขวาเน้นเสริมกำลังกองธงและขยายอำนาจ",
+      opt1: { text: "สนับสนุนแนวทางขุนนางฝ่ายซ้าย (ขุนนางซ้าย +12, ขุนนางขวา -8, ความรู้ฮ่องเต้ +3)", fn: () => { modPop({ left: 12, right: -8 }); state.emperor.stats.knowledge += 3; } },
+      opt2: { text: "สนับสนุนแนวทางขุนนางฝ่ายขวา (ขุนนางขวา +12, ขุนนางซ้าย -8, การรบฮ่องเต้ +3)", fn: () => { modPop({ right: 12, left: -8 }); state.emperor.stats.combat += 3; } }
+    }
+  ];
+
+  if (empAge >= 15) {
+    emperorEvents.push({
+      title: "🦌 พิธีล่าสัตว์ประจำฤดูใบไม้ร่วง ณ ทุ่งมู่หลาน",
+      desc: "แม่ทัพกองธงทูลเชิญเสด็จออกล่าสัตว์เพื่อแสดงแสนยานุภาพของชาวแมนจูและซ้อมรบกองทัพ",
+      opt1: { text: "เสด็จนำทัพด้วยพระองค์เอง (-80,000 ตำลึง | แมนจู +15, การรบฮ่องเต้ +5, สุขภาพ +3)", fn: () => { state.treasury -= 80000; state.emperor.stats.combat += 5; state.emperor.health = Math.min(100, state.emperor.health + 3); modPop({ manchu: 15 }); addLog("ฮ่องเต้เสด็จล่าสัตว์ ณ ทุ่งมู่หลาน ทรงยิงธนูแม่นยำ ขุนพลแมนจูแซ่ซ้อง!", "important"); } },
+      opt2: { text: "งดพิธีเพื่อประหยัดงบประมาณแผ่นดิน (แมนจู -8, ขุนนางซ้าย +6)", fn: () => { modPop({ manchu: -8, left: 6 }); } }
+    });
+    emperorEvents.push({
+      title: "🌙 ฮ่องเต้ลอบเสด็จประพาสนอกวังยามวิกาล",
+      desc: "ทรงปลอมพระองค์เป็นสามัญชนและพบกับนางคณิกาผู้เลอโฉมในหอคณิกาเมืองหลวง",
+      opt1: { text: "ประทับค้างคืนกับนางคณิกา (ไม่มีลูก/ไม่ผูกพัน | ขุนนางซ้าย -10, ชาวฮั่น +5)", fn: () => { modPop({ left: -10, han: 5 }); addLog("ฮ่องเต้แอบเสด็จเที่ยวนอกวังและประทับกับนางคณิกา ขุนนางฝ่ายซ้ายถวายฎีกาตักเตือน", "important"); } },
+      opt2: { text: "เสด็จกลับวังหลวงทันทีเพื่อรักษาพระเกียรติ (ขุนนางซ้าย +5)", fn: () => { modPop({ left: 5 }); } }
+    });
+  }
+
+  const ev = pick(emperorEvents);
+  window._tempEv = ev;
+  openModal(
+    ev.title,
+    `${getRegentNotice()}<p>${ev.desc}</p>`,
+    `<button onclick="window._tempEv.opt1.fn(); closeModal(); updateUI(); setSpeed(1);">${ev.opt1.text}</button>
+     <button onclick="window._tempEv.opt2.fn(); closeModal(); updateUI(); setSpeed(1);">${ev.opt2.text}</button>`
+  );
+}
+
+function acceptMongolConsort(cObj) {
+  state.consorts.push(cObj);
+  modPop({ foreign: 12, manchu: 8 });
+  addLog(`ฮ่องเต้ทรงรับท่านหญิงมองโกล "${cObj.name}" เข้าวังเป็นพระสนมขั้นผิน สัมพันธไมตรีชายแดนมั่นคง`, "important");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function rejectMongolConsort() {
+  modPop({ foreign: -12 });
+  addLog("ปฏิเสธการรับสนมจากเผ่ามองโกล สร้างความขุ่นเคืองแก่หัวเมืองชายแดน", "critical");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function triggerChildMarriageEvent(ch) {
+  setSpeed(0);
+  const curMotherHtml = getLatestMotherDisplay(ch, true);
+  if (ch.gender === "หญิง") {
+    openModal(
+      `💒 พระราชธิดา "${ch.name}" เจริญพระชนมายุครบ 15 พรรษา`,
+      `${getRegentNotice()}<p>ถึงวัยอันควรแก่การอภิเษกสมรสของ <b>${ch.name}</b> (มารดา: ${curMotherHtml}) พระองค์จะทรงจัดแจงอย่างไร?</p>`,
+      `<button onclick="resolveMarriage(${ch.id}, 'palace')">อภิเษกสมรสและให้อยู่ในวังหลวงต่อ (-100,000 ตำลึง | ความสัมพันธ์ +10)</button>
+       <button onclick="resolveMarriage(${ch.id}, 'mansion')">อภิเษกสมรสและส่งไปพำนักที่จวนเจ้าบ่าว (+ค่านิยมขุนนาง & ต่างเมือง +10)</button>`,
+      { required: true }
+    );
+  } else {
+    openModal(
+      `💒 พระราชโอรส "${ch.name}" เจริญพระชนมายุครบ 15 พรรษา`,
+      `${getRegentNotice()}<p>ถึงวัยอันควรแก่การคัดเลือกพระชายาให้แก่ <b>${ch.name}</b> (มารดา: ${curMotherHtml})</p>`,
+      `<button onclick="resolveMarriage(${ch.id}, 'prince_wed')">พระราชทานสมรสกับบุตรีขุนนางชั้นผู้ใหญ่ (-100,000 ตำลึง | ขุนนาง +10)</button>`,
+      { required: true }
+    );
+  }
+}
+
+function resolveMarriage(childId, mode) {
+  const ch = state.children.find(x => x.id === childId);
+  const curMotherStr = getLatestMotherDisplay(ch, false);
+  ch.married = true;
+  if (mode === "palace") {
+    state.treasury -= 100000;
+    ch.marriageResidence = "พำนักในวังหลวง";
+    ch.relation = Math.min(100, ch.relation + 10);
+    addLog(`พระราชทานอภิเษกสมรสให้องค์หญิง ${ch.name} (มารดา: ${curMotherStr}) และทรงอนุญาตให้อยู่ในวังต่อ`, "important");
+  } else if (mode === "mansion") {
+    ch.marriageResidence = "พำนัก ณ จวนราชบุตรเขย";
+    modPop({ left: 5, right: 5, foreign: 10 });
+    addLog(`พระราชทานอภิเษกสมรสให้องค์หญิง ${ch.name} (มารดา: ${curMotherStr}) และส่งเสด็จไปยังจวนเจ้าบ่าว`, "important");
+  } else {
+    state.treasury -= 100000;
+    ch.marriageResidence = "มีพระชายาเอกแล้ว";
+    modPop({ left: 8, right: 8 });
+    addLog(`พระราชทานพระชายาเอกให้แก่องค์ชาย ${ch.name} (มารดา: ${curMotherStr})`, "important");
+  }
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+// ==================== TOP ACTION BUTTONS ====================
+function openCeremonyModal() {
+  setSpeed(0);
+  openModal(
+    "🏮 จัดพิธีมงคลหลวง (ค่าใช้จ่าย: 500,000 ตำลึง)",
+    `${getRegentNotice()}<p>การประกอบพิธีบวงสรวงสวรรค์และจัดงานเฉลิมฉลองจะช่วยเพิ่มค่าความนิยมแก่ทุกฝ่ายอย่างมาก</p>
+     <p>เงินในท้องพระคลังปัจจุบัน: <b>${fmtNum(state.treasury)}</b> ตำลึง</p>`,
+    `<button ${state.treasury < 500000 ? "disabled" : ""} onclick="execCeremony()">ยืนยันจัดพิธีมงคล (-500,000 ตำลึง)</button>`
+  );
+}
+
+function execCeremony() {
+  state.treasury -= 500000;
+  modPop({ left: 10, right: 10, manchu: 10, han: 10, foreign: 8 });
+  addLog("ทรงประกอบพิธีมงคลหลวงอย่างยิ่งใหญ่ ราษฎรและขุนนางแซ่ซ้องสรรเสริญ! (-500,000 ตำลึง)", "important");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openRecruitModal() {
+  if (state.emperor.age < 15) return;
+  setSpeed(0);
+  if (state.treasury < 350000) {
+    openModal("🌸 คัดเลือกพระสนมใหม่", `<p style="color:#ff4d4d;">เงินในท้องพระคลังไม่เพียงพอ (ต้องการ 350,000 ตำลึง)</p>`, "");
+    return;
+  }
+  const candidates = [];
+  for (let i = 0; i < 6; i++) {
+    candidates.push(generatePerson("หญิง", "ตระกูลขุนนางแปดกองธง", "ตาอิ้ง", rand(15, 19)));
+  }
+  window._recruitPool = candidates;
+
+  let html = `${getRegentNotice()}<p>เสียค่าใช้จ่าย <b>350,000 ตำลึง</b> ได้รับสาวงามจาก 8 กองธง 6 คน โปรดกำหนดตำแหน่งให้แต่ละคน (ค่าเริ่มต้นคือ 8. ตาอิ้ง):</p>`;
+  candidates.forEach((c, idx) => {
+    const bannerLabel = BANNERS_ORDERED.find(b => b.value === c.banner)?.label || c.banner;
+    html += `
+      <div class="char-card">
+        <b>${idx + 1}. ${c.name}</b> (อายุ ${c.age} ปี)<br>
+        <span style="font-size:12px; color:var(--gold);">${bannerLabel}</span><br>
+        <span style="font-size:12px;">ความรู้:${c.stats.knowledge} | รบ:${c.stats.combat} | ความดี:${c.stats.virtue}</span>
+        <select id="rec-rank-${idx}" style="margin-top:5px;">
+          ${CONSORT_RANKS.filter(r => r.order >= 2 && r.order <= 9).map(r => {
+            const curCount = state.consorts.filter(x => x.alive && x.rank === r.id).length;
+            const full = r.limit < 900 && curCount >= r.limit;
+            const limitTxt = r.limit < 900 ? `(${curCount}/${r.limit}${full ? " - เต็ม" : ""})` : "(ไม่จำกัด)";
+            return `<option value="${r.id}" ${full ? "disabled" : ""} ${r.id === "ตาอิ้ง" ? "selected" : ""}>${r.title} ${limitTxt}</option>`;
+          }).join("")}
+        </select>
+      </div>
+    `;
+  });
+
+  openModal(
+    "🌸 คัดเลือกพระสนมใหม่ (-350,000 ตำลึง)",
+    html,
+    `<button onclick="confirmRecruit()">ยืนยันรับเข้าวัง (-350,000 ตำลึง)</button>`
+  );
+}
+
+function confirmRecruit() {
+  let rankAdds = {};
+  for (let i = 0; i < window._recruitPool.length; i++) {
+    const r = document.getElementById(`rec-rank-${i}`).value;
+    rankAdds[r] = (rankAdds[r] || 0) + 1;
+  }
+  for (const r in rankAdds) {
+    const limit = getRankObj(r).limit;
+    const cur = state.consorts.filter(x => x.alive && x.rank === r).length;
+    if (limit < 900 && cur + rankAdds[r] > limit) {
+      alert(`ตำแหน่ง ${r} มีจำนวนเกินโควตา (${limit} คน) กรุณาจัดสรรใหม่`);
+      return;
+    }
+  }
+
+  state.treasury -= 350000;
+  window._recruitPool.forEach((c, i) => {
+    c.rank = document.getElementById(`rec-rank-${i}`).value;
+    state.consorts.push(c);
+  });
+  addLog("ทรงคัดเลือกสาวงามจากแปดกองธงเข้าวังหลวง 6 คน (-350,000 ตำลึง)", "important");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openPromoteConsortModal() {
+  setSpeed(0);
+  const eligible = getSortedConsorts(state.consorts.filter(c => c.alive && !c.inColdPalace && c.rank !== "ฮองเฮา"));
+  let html = `${getRegentNotice()}<p>ค่าใช้จ่ายในการจัดพิธีเลื่อนขั้นพระสนม: <b>150,000 ตำลึง/ครั้ง</b> (เรียงลำดับตามยศปัจจุบันของพระสนม)</p>
+              <p>คลังปัจจุบัน: <b>${fmtNum(state.treasury)}</b> ตำลึง</p>`;
+
+  if (eligible.length === 0) {
+    html += `<p style="color:var(--text-muted);">ไม่มีพระสนมที่สามารถเลื่อนขั้นได้ในขณะนี้</p>`;
+  }
+
+  eligible.forEach(c => {
+    const curOrder = getRankObj(c.rank).order;
+    const kidsHtml = formatConsortChildrenText(c.id, true);
+    html += `
+      <div class="char-card">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" class="prom-chk" value="${c.id}" style="width:auto;">
+          <div>
+            <b>${c.rank} ${c.name}</b><br>
+            <span style="font-size:12px; color:var(--gold);">${kidsHtml} | ความสัมพันธ์: ${c.relation}/100 | ความดี: ${c.stats.virtue}</span>
+          </div>
+        </label>
+        <select id="prom-to-${c.id}" style="margin-top:5px;">
+          ${CONSORT_RANKS.filter(r => r.order >= 2 && r.order <= curOrder).map(r => {
+            const cur = state.consorts.filter(x => x.alive && x.rank === r.id).length;
+            const full = r.limit < 900 && cur >= r.limit;
+            const limitTxt = r.limit < 900 ? `(${cur}/${r.limit}${full ? " - เต็ม" : ""})` : "(ไม่จำกัด)";
+            return `<option value="${r.id}" ${full ? "disabled" : ""} ${r.id === c.rank ? "selected" : ""}>${r.id === c.rank ? "คงเดิม: " : "เลื่อนเป็น: "}${r.title} ${limitTxt}</option>`;
+          }).join("")}
+        </select>
+      </div>
+    `;
+  });
+
+  openModal(
+    "⬆️ เลื่อนขั้นพระสนม (-150,000 ตำลึง)",
+    html,
+    `<button ${state.treasury < 150000 || eligible.length === 0 ? "disabled" : ""} onclick="confirmPromoteConsorts()">ยืนยันการเลื่อนขั้น (-150,000 ตำลึง)</button>`
+  );
+}
+
+function confirmPromoteConsorts() {
+  const checked = Array.from(document.querySelectorAll(".prom-chk:checked")).map(el => parseInt(el.value));
+  if (checked.length === 0) { alert("กรุณาเลือกพระสนมอย่างน้อย 1 คน"); return; }
+
+  state.treasury -= 150000;
+  let names = [];
+  checked.forEach(id => {
+    const c = state.consorts.find(x => x.id === id);
+    const newRank = document.getElementById(`prom-to-${id}`).value;
+    if (newRank !== c.rank) {
+      c.rank = newRank;
+      c.relation = Math.min(100, c.relation + 12);
+      names.push(`${c.name} เป็น ${newRank}`);
+    }
+  });
+  if (names.length > 0) {
+    addLog(`มีราชโองการเลื่อนขั้นพระสนม: ${names.join(", ")} (-150,000 ตำลึง)`, "important");
+  }
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openWarModal() {
+  setSpeed(0);
+  openModal(
+    "⚔️ ประกาศสงครามขยายอาณาเขต (-1,000,000 ตำลึง)",
+    `${getRegentNotice()}<p>การทำสงครามต้องใช้งบประมาณ <b>1,000,000 ตำลึง</b></p>
+     <ul>
+       <li><b>กรณีชนะ:</b> ได้รับเงินรางวัลและค่าปฏิกรรมสงคราม <b>1,500,000 – 5,000,000 ตำลึง</b> และเพิ่มค่าความนิยม</li>
+       <li><b>กรณีแพ้:</b> สูญเสียเงินทุนและค่านิยมลดฮวบ</li>
+     </ul>`,
+    `<button ${state.treasury < 1000000 ? "disabled" : ""} onclick="execWar()">กรีฑาทัพออกรบ (-1,000,000 ตำลึง)</button>`
+  );
+}
+
+function execWar() {
+  state.treasury -= 1000000;
+  const winChance = 0.45 + (state.emperor.stats.combat / 200);
+  if (Math.random() < winChance) {
+    const loot = rand(1500000, 5000000);
+    state.treasury += loot;
+    modPop({ manchu: 15, han: 8, left: 10, right: 12, foreign: 10 });
+    addLog(`⚔️ กองทัพต้าชิงรบชนะอย่างเกรียงไกร! ยึดทรัพย์และรับบรรณาการเข้าคลัง +${fmtNum(loot)} ตำลึง!`, "important");
+  } else {
+    modPop({ manchu: -15, han: -15, left: -12, right: -12, foreign: -10 });
+    addLog(`💀 กองทัพพ่ายแพ้ในสมรภูมิชายแดน! สูญเสียไพร่พลและเงินคลัง 1,000,000 ตำลึง ค่านิยมตกต่ำ!`, "critical");
+  }
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openCrownPrinceModal() {
+  setSpeed(0);
+  if (state.crownPrinceId) {
+    const cp = state.children.find(c => c.id === state.crownPrinceId);
+    const curMotherHtml = getLatestMotherDisplay(cp, true);
+    openModal(
+      "⚠️ ปลดองค์รัชทายาท",
+      `${getRegentNotice()}<p>ปัจจุบัน <b>${cp.name}</b> (มารดา: ${curMotherHtml}) ดำรงตำแหน่งองค์รัชทายาท</p>
+       <p style="color:#ff4d4d;">การปลดองค์รัชทายาทจะสร้างแรงสั่นสะเทือนในราชสำนักและลดความสัมพันธ์อย่างรุนแรง</p>`,
+      `<button class="btn-danger" onclick="deposeCrownPrince()">ยืนยันปลดองค์รัชทายาท</button>`
+    );
+    return;
+  }
+
+  const sons = state.children.filter(c => c.alive && c.gender === "ชาย");
+  if (sons.length === 0) {
+    openModal("👑 แต่งตั้งองค์รัชทายาท", "<p>ยังไม่มีพระราชโอรสในรัชกาลปัจจุบัน</p>", "");
+    return;
+  }
+
+  let html = `${getRegentNotice()}<p>เลือกพระราชโอรสขึ้นเป็นองค์รัชทายาท (หวงไท่จื่อ):</p>`;
+  sons.forEach(s => {
+    const curMotherHtml = getLatestMotherDisplay(s, true);
+    html += `<button class="choice-btn" onclick="appointCrownPrince(${s.id})">${s.name} (มารดา: ${curMotherHtml} | อายุ ${s.age} ปี | ความรู้:${s.stats.knowledge} รบ:${s.stats.combat} ความดี:${s.stats.virtue})</button>`;
+  });
+  openModal("👑 แต่งตั้งองค์รัชทายาท", html, "");
+}
+
+function appointCrownPrince(id) {
+  const s = state.children.find(x => x.id === id);
+  const curMotherStr = getLatestMotherDisplay(s, false);
+  state.crownPrinceId = id;
+  s.rank = "องค์รัชทายาท (หวงไท่จื่อ)";
+  addLog(`มีราชโองการสถาปนาองค์ชาย "${s.name}" (มารดา: ${curMotherStr}) ขึ้นเป็นองค์รัชทายาท!`, "important");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function deposeCrownPrince() {
+  const cp = state.children.find(c => c.id === state.crownPrinceId);
+  if (cp) {
+    const curMotherStr = getLatestMotherDisplay(cp, false);
+    cp.rank = PRINCE_RANKS[2];
+    cp.relation = Math.max(0, cp.relation - 40);
+    addLog(`มีราชโองการปลด "${cp.name}" (มารดา: ${curMotherStr}) ออกจากตำแหน่งองค์รัชทายาท!`, "critical");
+  }
+  state.crownPrinceId = null;
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openAppointEmpressModal() {
+  setSpeed(0);
+  const candidates = getSortedConsorts(state.consorts.filter(c => c.alive && !c.inColdPalace && c.rank !== "สามัญชน"));
+  let html = `${getRegentNotice()}<p>เลือกพระสนมขึ้นเป็นสมเด็จพระจักรพรรดินี (ฮองเฮา):</p>`;
+  candidates.forEach(c => {
+    html += `<button class="choice-btn" onclick="appointEmpress(${c.id})">${c.rank} ${c.name} (${getConsortBriefInfo(c, true)})</button>`;
+  });
+  openModal("👸 แต่งตั้งฮองเฮา", html, "");
+}
+
+function appointEmpress(id) {
+  const c = state.consorts.find(x => x.id === id);
+  c.rank = "ฮองเฮา";
+  c.relation = Math.min(100, c.relation + 20);
+  addLog(`ประกอบพิธีสถาปนา "${c.name}" ขึ้นเป็นฮองเฮาคู่บัลลังก์!`, "important");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openAbdicateModal() {
+  setSpeed(0);
+  const sons = state.children.filter(c => c.alive && c.gender === "ชาย");
+  if (sons.length === 0) {
+    openModal("📜 สละราชบัลลังก์", "<p style='color:#ff4d4d;'>ไม่สามารถสละราชบัลลังก์ได้ เนื่องจากยังไม่มีพระราชโอรสสืบทอดราชบัลลังก์!</p>", "");
+    return;
+  }
+  openModal(
+    "📜 ยืนยันการสละราชบัลลังก์",
+    `<p>พระองค์แน่พระทัยหรือไม่ที่จะสละราชบัลลังก์ให้แก่รัชทายาท?</p>
+     <p>บทสรุปหลังสละราชบัลลังก์จะขึ้นอยู่กับ <b>ค่าความนิยม</b> และ <b>ความสามารถ</b> ของฮ่องเต้ (หากเป็น <b>ไท่ซ่างหวงผู้ทรงอำนาจ</b> จะขึ้นเป็นผู้สำเร็จราชการคุมอำนาจหลังม่านแทนฮองไทเฮา)</p>`,
+    `<button class="btn-danger" onclick="executeAbdication()">ยืนยันสละราชบัลลังก์ทันที</button>`
+  );
+}
+
+function executeAbdication() {
+  const avgPop = (state.pop.left + state.pop.right + state.pop.manchu + state.pop.han) / 4;
+  const avgStat = (state.emperor.stats.knowledge + state.emperor.stats.combat + state.emperor.stats.virtue) / 3;
+  let endingText = "";
+  let powerfulTaishanghuang = false;
+
+  if (avgPop < 30) {
+    endingText = `💀 ขุนนางและราษฎรไม่พอใจอย่างรุนแรงที่สละบัลลังก์อย่างไร้ความรับผิดชอบ อดีตฮ่องเต้ ${state.emperor.name} ถูกลอบปลงพระชนม์ระหว่างเดินทาง!`;
+  } else if (avgPop >= 65 && avgStat >= 65) {
+    powerfulTaishanghuang = true;
+    endingText = `👑 อดีตฮ่องเต้ ${state.emperor.name} เสด็จขึ้นเป็น "ไท่ซ่างหวงผู้ทรงอำนาจ" ยังคงกุมพระราชอำนาจสิทธิ์ขาดหลังม่านเหนือฮองไทเฮาอย่างสง่างาม!`;
+  } else if (avgPop >= 45) {
+    endingText = `🍵 อดีตฮ่องเต้ ${state.emperor.name} เสด็จขึ้นเป็น "ไท่ซ่างหวงไร้ซึ่งอำนาจ" ใช้ชีวิตบั้นปลายอย่างสงบในอุทยานหลวง`;
+  } else {
+    endingText = `🐎 เพื่อหลีกเลี่ยงความขัดแย้งทางการเมือง อดีตฮ่องเต้ ${state.emperor.name} เสด็จไปประทับยังแดนไกลห่างจากเมืองหลวงตลอดกาล`;
+  }
+
+  addLog(`สละราชบัลลังก์! ${endingText}`, "critical");
+  closeModal();
+  triggerSuccession("สละราชบัลลังก์", powerfulTaishanghuang);
+}
+
+// ==================== MORTALITY & SUCCESSION ====================
+function checkEmperorMortality() {
+  const e = state.emperor;
+  let dieReason = null;
+
+  if (e.health <= 0) {
+    dieReason = "พระวรกายทรุดโทรมหนักและเสด็จสวรรคต";
+  } else {
+    const avgPop = (state.pop.left + state.pop.right + state.pop.manchu + state.pop.han) / 4;
+    if (e.age >= 15 && avgPop < 25 && e.trait !== "ระแวงเจ้าเล่ห์" && Math.random() < 0.15) {
+      dieReason = "ถูกลอบปลงพระชนม์ในวังหลวงเนื่องจากค่านิยมตกต่ำอย่างหนัก!";
+    } else if (e.age <= 30 && Math.random() < 0.015) {
+      dieReason = "ประชวรด้วยโรคประหลาดกะทันหันและเสด็จสวรรคตก่อนวัยอันควร!";
+    } else if (e.age > 30 && e.age <= 60 && Math.random() < 0.025) {
+      dieReason = "ประชวรด้วยโรคร้ายแรงไม่อาจรักษาได้และเสด็จสวรรคต!";
+    } else if (e.age > 60 && Math.random() < (0.06 + (e.age - 60) * 0.02)) {
+      dieReason = "เสด็จสวรรคตด้วยพระโรคชราภาพ!";
+    }
+  }
+
+  if (dieReason) {
+    addLog(`🏴 ข่าวเศร้าสลดทั้งแผ่นดิน! ฮ่องเต้ ${e.name} (พระชนมายุ ${e.age} พรรษา) ${dieReason}`, "critical");
+    triggerSuccession(dieReason, false);
+  }
+}
+
+function triggerSuccession(reason, hasPowerfulTaishanghuang = false) {
+  // 1. บันทึกประวัติความสัมพันธ์ของรัชกาลที่กำลังสิ้นสุดลง
+  const frozenRecords = [];
+  getAllActiveEmpressDowagers().forEach(ed => {
+    frozenRecords.push({ role: "ฮองไทเฮา", name: ed.name, rel: 80 });
+  });
+  const sortedConsorts = getSortedConsorts(state.consorts);
+  sortedConsorts.forEach(c => frozenRecords.push({ role: c.rank, name: c.name, rel: c.relation }));
+  state.children.filter(ch => ch.genBorn === state.generation).forEach(ch => {
+    frozenRecords.push({ role: ch.rank, name: `${ch.name} (มารดา: ${getLatestMotherDisplay(ch, false)})`, rel: ch.relation });
+  });
+
+  state.relationsHistory.push({
+    gen: state.generation,
+    empName: state.emperor.name,
+    records: frozenRecords
+  });
+
+  if (hasPowerfulTaishanghuang) {
+    state.taishanghuang = {
+      id: state.emperor.id,
+      name: state.emperor.name,
+      age: state.emperor.age,
+      alive: true,
+      hasPower: true,
+      stats: { ...state.emperor.stats }
+    };
+  } else if (reason !== "สละราชบัลลังก์") {
+    if (state.taishanghuang && state.taishanghuang.id === state.emperor.id) {
+      state.taishanghuang.alive = false;
+      state.taishanghuang.hasPower = false;
+    }
+  }
+
+  // 2. คัดเลือกผู้สืบราชบัลลังก์
+  let heir = state.children.find(c => c.id === state.crownPrinceId && c.alive);
+  if (!heir) {
+    const aliveSons = state.children.filter(c => c.alive && c.gender === "ชาย");
+    if (aliveSons.length > 0) {
+      heir = aliveSons[0];
+    } else {
+      heir = generatePerson("ชาย", "สายพระโลหิตราชวงศ์", "องค์รัชทายาท", 18, null, "กองธงเหลืองขลิบ");
+    }
+  }
+
+  // 3. จัดการตำแหน่งอดีตพระสนมในรัชกาลก่อน (ผู้ที่จะขึ้นเป็นไทเฮาต้องเป็นฮองเฮาของฮ่องเต้ที่แล้ว)
+  let formerEmpress = null;
+  let bioMotherConsort = null;
+  let bioMotherOriginalRank = null;
+  let askPromoteBioMother = false;
+
+  state.consorts.forEach(c => {
+    if (!c.alive) return;
+    c.pregnant = false;
+    c.pregMonths = 0;
+    c.confinedMonths = 0;
+
+    const isFormerEmpress = (c.rank === "ฮองเฮา");
+    const isBioMother = (c.id === heir.motherId);
+
+    if (isFormerEmpress) {
+      c.rank = "ฮองไทเฮา";
+      formerEmpress = c;
+    } else if (isBioMother) {
+      bioMotherConsort = c;
+      bioMotherOriginalRank = c.rank;
+      const origOrder = getRankObj(c.rank).order; // 2=หวงกุ้ยเฟย, 3=กุ้ยเฟย, 4=เฟย, 5=ผิน, 6=กุ้ยเหริน, 7=ฉางไจ้, 8=ตาอิ้ง, 9=นางใน, 10=สามัญชน
+
+      if (!c.inColdPalace && origOrder >= 2 && origOrder <= 4) {
+        // ระดับเฟยขึ้นไป (เฟย, กุ้ยเฟย, หวงกุ้ยเฟย): ตั้งเป็นไท่+ยศเดิมไว้ก่อน และเปิดหน้าต่างให้เลือกว่าจะสถาปนาเป็นฮองไทเฮาด้วยไหม
+        c.rank = "ไท่" + c.rank;
+        askPromoteBioMother = true;
+      } else if (!c.inColdPalace && origOrder >= 5 && origOrder <= 9) {
+        // ระดับตั้งแต่ผินลงไป (ผิน, กุ้ยเหริน, ฉางไจ้, ตาอิ้ง, นางใน): ตีขึ้นเป็น "ไท่กุ้ยเฟย" อัตโนมัติ
+        c.rank = "ไท่กุ้ยเฟย";
+      } else {
+        // กรณีถูกขังตำหนักเย็น/สามัญชน คงสภาพเดิม
+        if (c.rank !== "นางใน" && c.rank !== "สามัญชน") {
+          c.rank = "ไท่" + c.rank;
+        }
+      }
+    } else {
+      // สนมอื่นๆ ปรับเป็นตำแหน่งสนมรุ่นก่อน
+      if (c.rank !== "นางใน" && c.rank !== "สามัญชน") {
+        c.rank = "ไท่" + c.rank;
+      }
+    }
+
+    state.dowagers.push(c);
+  });
+
+  // ตั้งค่าฮองไทเฮาหลัก (อดีตฮองเฮาของรัชกาลที่แล้ว)
+  if (formerEmpress) {
+    state.empressDowager = formerEmpress;
+  } else if (state.empressDowager && !state.empressDowager.alive) {
+    state.empressDowager = null;
+  }
+
+  // 4. รีเซตโอรส/ธิดาของรัชกาลเก่าทั้งหมด (ถือว่าไม่มีบทบาทในรัชกาลใหม่แล้ว)
+  state.children = [];
+  state.crownPrinceId = null;
+  state.consorts = [];
+
+  state.generation++;
+  state.era = 1;
+  state.month = 1;
+  state.week = 1;
+  state.emperor = {
+    id: heir.id,
+    name: heir.name,
+    gender: heir.gender,
+    age: heir.age,
+    trait: "สืบราชสันตติวงศ์",
+    healthTrait: "ปานกลางสมดุล",
+    health: 95,
+    stats: { ...heir.stats }
+  };
+  state.regentActive = state.emperor.age <= 22;
+
+  addLog(`👑 ผลัดแผ่นดิน! องค์รัชทายาท "${state.emperor.name}" (พระชนมายุ ${state.emperor.age} พรรษา) ขึ้นครองราชย์เป็นฮ่องเต้รุ่นที่ ${state.generation} แห่งราชวงศ์ ${state.dynasty} เริ่มต้นรัชศกที่ 1!`, "important");
+
+  if (formerEmpress) {
+    addLog(`👑 อดีตฮองเฮา "${formerEmpress.name}" เสด็จขึ้นดำรงพระอิสริยยศเป็น "ฮองไทเฮา" แห่งรัชกาลใหม่`, "important");
+  }
+
+  if (bioMotherConsort && !askPromoteBioMother && bioMotherConsort.rank === "ไท่กุ้ยเฟย" && getRankObj(bioMotherOriginalRank).order >= 5) {
+    addLog(`🌸 พระมารดาผู้ให้กำเนิดฮ่องเต้พระองค์ใหม่ "${bioMotherConsort.name}" (เดิมขั้น ${bioMotherOriginalRank}) ได้รับการยกย่องขึ้นเป็น "ไท่กุ้ยเฟย" โดยอัตโนมัติตามราชประเพณี`, "important");
+  }
+
+  if (state.emperor.age < 15) {
+    addLog(`เนื่องจากฮ่องเต้พระองค์ใหม่ยังทรงพระเยาว์ (${state.emperor.age} พรรษา) จะยังไม่เปิดระบบฝ่ายในจนกว่าจะครบ 15 พรรษา`, "important");
+  }
+
+  if (state.regentActive) {
+    const activeRegent = getActiveRegent();
+    if (activeRegent) {
+      addLog(`เนื่องจากฮ่องเต้พระชนมายุ ${state.emperor.age} พรรษา (ไม่เกิน 22 พรรษา) ${activeRegent.role} จะทรงว่าราชการหลังม่านกุมอำนาจสูงสุด!`, "important");
+    }
+  }
+
+  // หากพระมารดาแท้ๆ เดิมมียศระดับ "เฟย" ขึ้นไป ให้เลือกได้ว่าจะสถาปนาเป็นฮองไทเฮาด้วยหรือไม่
+  if (askPromoteBioMother && bioMotherConsort) {
+    setSpeed(0);
+    const hasFormerEmpressTxt = formerEmpress
+      ? `ปัจจุบันมีอดีตฮองเฮา <b>${formerEmpress.name}</b> ดำรงตำแหน่งฮองไทเฮาอยู่แล้ว`
+      : `ปัจจุบันตำแหน่งฮองไทเฮายังว่างอยู่`;
+    openModal(
+      "👑 การสถาปนาพระมารดาผู้ให้กำเนิดฮ่องเต้",
+      `<p>พระมารดาแท้ๆ ของฮ่องเต้พระองค์ใหม่คือ <b>${bioMotherConsort.name}</b> (เดิมมียศระดับ <b>${bioMotherOriginalRank}</b> ซึ่งสูงกว่าขั้นผิน จึงมีสิทธิ์ได้รับการสถาปนาเป็นฮองไทเฮา)</p>
+       <p style="font-size:13px; color:var(--text-muted);">${hasFormerEmpressTxt}</p>
+       <p>พระองค์จะทรงสถาปนาพระมารดาขึ้นเป็น <b>"ฮองไทเฮา"</b> ด้วยหรือไม่?</p>`,
+      `<button onclick="resolveBioMotherPromotion(${bioMotherConsort.id}, true)">👑 สถาปนาพระมารดาเป็น "ฮองไทเฮา" (ยกย่องพระเกียรติสูงสุด)</button>
+       <button onclick="resolveBioMotherPromotion(${bioMotherConsort.id}, false)">🌸 คงพระอิสริยยศไว้ที่ "${bioMotherConsort.rank}" ตามลำดับศักดิ์เดิม</button>`,
+      { required: true, priority: true }
+    );
+  }
+
+  saveToSlot("auto", true);
+  updateUI();
+}
+
+function resolveBioMotherPromotion(motherId, promoteToEmpressDowager) {
+  const m = state.dowagers.find(d => d.id === motherId);
+  if (m) {
+    if (promoteToEmpressDowager) {
+      m.rank = "ฮองไทเฮา";
+      if (!state.empressDowager || !state.empressDowager.alive) {
+        state.empressDowager = m;
+      }
+      addLog(`👑 ฮ่องเต้มีราชโองการสถาปนาพระมารดาผู้ให้กำเนิด "${m.name}" ขึ้นเป็น "ฮองไทเฮา" ร่วมเฉลิมพระเกียรติ!`, "important");
+    } else {
+      addLog(`🌸 ฮ่องเต้มีราชโองการให้พระมารดา "${m.name}" ดำรงพระอิสริยยศ "${m.rank}" พำนักอย่างสงบในวังหลัง`, "normal");
+    }
+  }
+  closeModal();
+  updateUI();
+  setSpeed(1);
+}
+
+// ==================== FAMILY TREE ACTIONS, SORTING & PUNISHMENTS ====================
+function switchFamilyTab(tab, btn) {
+  state.currentTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderFamilyPanel();
+}
+
+function getSortedConsorts(list) {
+  return [...list].sort((a, b) => {
+    if (a.alive !== b.alive) {
+      return a.alive ? -1 : 1;
+    }
+    const oA = getRankObj(a.rank).order;
+    const oB = getRankObj(b.rank).order;
+    if (oA !== oB) return oA - oB;
+    return a.id - b.id;
+  });
+}
+
+function getSortedChildren(list) {
+  return [...list].sort((a, b) => {
+    if (a.alive !== b.alive) {
+      return a.alive ? -1 : 1;
+    }
+    if (a.gender === "ชาย" && b.gender === "ชาย") {
+      const rA = getPrinceRankOrder(a.rank);
+      const rB = getPrinceRankOrder(b.rank);
+      if (rA !== rB) return rA - rB;
+    }
+    return a.id - b.id;
+  });
+}
+
+function punishConsort(id, action, extraVal = 0) {
+  const c = state.consorts.find(x => x.id === id);
+  if (!c) return;
+
+  if (action === "cut_allowance") {
+    c.relation = Math.max(0, c.relation - 10);
+    addLog(`มีรับสั่งตัดเบี้ยหวัดของ "${c.rank} ${c.name}" เป็นเวลา 6 เดือน (ความสัมพันธ์ -10)`, "important");
+  } else if (action === "copy_scripture") {
+    c.relation = Math.max(0, c.relation - 8);
+    c.stats.virtue = Math.min(100, c.stats.virtue + 5);
+    addLog(`มีรับสั่งให้ "${c.rank} ${c.name}" คัดคัมภีร์สำนึกตนในตำหนัก (ความสัมพันธ์ -8, ความดี +5)`, "important");
+  } else if (action === "confine") {
+    c.confinedMonths = extraVal || 6;
+    c.relation = Math.max(0, c.relation - 15);
+    addLog(`มีรับสั่งกักบริเวณ "${c.rank} ${c.name}" ในตำหนักส่วนตัว ${c.confinedMonths} เดือน ห้ามเข้าเฝ้าฮ่องเต้! (ความสัมพันธ์ -15)`, "critical");
+  } else if (action === "demote") {
+    const curOrder = getRankObj(c.rank).order;
+    const nextRankObj = CONSORT_RANKS.find(r => r.order === curOrder + 1);
+    if (nextRankObj) {
+      setSpecificConsortRank(c.id, nextRankObj.id);
+      return;
+    } else {
+      alert("อยู่ในตำแหน่งต่ำสุดแล้ว");
+    }
+  } else if (action === "cold") {
+    c.inColdPalace = true;
+    c.confinedMonths = 0;
+    c.relation = Math.max(0, c.relation - 35);
+    addLog(`มีราชโองการถอดยศและคุมขัง "${c.name}" ไว้ในตำหนักเย็น! (ความสัมพันธ์ -35)`, "critical");
+  } else if (action === "release") {
+    c.inColdPalace = false;
+    if (c.rank === "สามัญชน") c.rank = "ตาอิ้ง";
+    c.relation = Math.min(100, c.relation + 15);
+    addLog(`ฮ่องเต้ทรงเมตตา ปล่อยตัว "${c.name}" ออกจากตำหนักเย็นกลับมารับตำแหน่ง ${c.rank}`, "important");
+  } else if (action === "execute") {
+    c.alive = false;
+    addLog(`มีราชโองการประหารชีวิต "${c.rank} ${c.name}" เพื่อเชือดไก่ให้ลิงดู!`, "critical");
+  } else if (action === "forgive") {
+    c.relation = Math.min(100, c.relation + 5);
+    addLog(`ฮ่องเต้ทรงมีพระเมตตาว่ากล่าวตักเตือนและอภัยโทษให้แก่ ${c.rank} ${c.name} (ความสัมพันธ์ +5)`, "normal");
+  }
+
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openDemoteSelectModal(id) {
+  setSpeed(0);
+  const c = state.consorts.find(x => x.id === id);
+  const curOrder = getRankObj(c.rank).order;
+  const lowerRanks = CONSORT_RANKS.filter(r => r.order > curOrder);
+
+  if (lowerRanks.length === 0) {
+    openModal("⬇️ ลดขั้นพระสนม", "<p>อยู่ในขั้นต่ำสุดแล้ว</p>", "");
+    return;
+  }
+
+  let html = `<p>เลือกขั้นตำแหน่งที่ต่ำลงมาสำหรับ <b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}):</p>`;
+  lowerRanks.forEach(r => {
+    html += `<button class="choice-btn" onclick="setSpecificConsortRank(${c.id}, '${r.id}')">ลดขั้นเป็น: <b>${r.title}</b><br><span style="font-size:12px; color:var(--text-muted);">${r.desc}</span></button>`;
+  });
+  openModal("⬇️ เลือกลดขั้นพระสนม", html, "");
+}
+
+function setSpecificConsortRank(id, newRank) {
+  const c = state.consorts.find(x => x.id === id);
+  c.rank = newRank;
+  c.relation = Math.max(0, c.relation - 20);
+
+  if (newRank === "สามัญชน") {
+    addLog(`มีราชโองการถอดยศ "${c.name}" ลงเป็น "สามัญชน"!`, "critical");
+    openModal(
+      "⚠️ ถอดยศเป็นสามัญชน — บังคับเลือกบทลงโทษ",
+      `<p style="color:#ff4d4d; font-weight:bold;">"${c.name}" ถูกลดขั้นลงเป็น "สามัญชน" แล้ว ตามกฎมณเฑียรบาลต้องส่งไปตำหนักเย็นหรือประหารชีวิตเท่านั้น!</p>`,
+      `<button onclick="punishConsort(${c.id}, 'cold')">❄️ ส่งตัวไปขังในตำหนักเย็น</button>
+       <button class="btn-danger" onclick="punishConsort(${c.id}, 'execute')">⚔️ สั่งประหารชีวิตทันที</button>`,
+      { replace: true, required: true }
+    );
+    return;
+  }
+
+  addLog(`มีราชโองการลดขั้น "${c.name}" ลงเป็น "${newRank}" (ความสัมพันธ์ -20)`, "critical");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+function openPromotePrinceModal(childId) {
+  setSpeed(0);
+  const ch = state.children.find(x => x.id === childId);
+  const curMotherHtml = getLatestMotherDisplay(ch, true);
+  let html = `<p>พระราชทานเลื่อนบรรดาศักดิ์ให้แก่องค์ชาย <b>${ch.name}</b> (มารดา: ${curMotherHtml} | อายุ ${ch.age} ปี)</p>
+              <p style="font-size:12px; color:var(--text-muted);">เกณฑ์พิจารณา: ความรู้ (${ch.stats.knowledge}) | การรบ (${ch.stats.combat}) | ความดี (${ch.stats.virtue})</p>`;
+  PRINCE_RANKS.forEach(r => {
+    html += `<button class="choice-btn" onclick="setPrinceRank(${ch.id}, '${r}')">${r}</button>`;
+  });
+  openModal("🎖️ พระราชทานยศองค์ชาย", html, "");
+}
+
+function setPrinceRank(childId, newRank) {
+  const ch = state.children.find(x => x.id === childId);
+  const curMotherStr = getLatestMotherDisplay(ch, false);
+  ch.rank = newRank;
+  ch.relation = Math.min(100, ch.relation + 15);
+  addLog(`พระราชทานบรรดาศักดิ์ "${newRank}" ให้แก่องค์ชาย "${ch.name}" (มารดา: ${curMotherStr})`, "important");
+  closeModal(); updateUI(); setSpeed(1);
+}
+
+// ==================== RELATIONS MODAL ====================
+function openRelationsModal() {
+  setSpeed(0);
+  let html = `<h3>รุ่นปัจจุบัน: รุ่นที่ ${state.generation} (${state.emperor.name})</h3>`;
+  if (state.taishanghuang && state.taishanghuang.alive) {
+    html += `<div class="char-card">👑 <b>ไท่ซ่างหวง:</b> ${state.taishanghuang.name} (${state.taishanghuang.hasPower ? "กุมอำนาจหลังม่าน" : "พำนักอุทยานหลวง"})</div>`;
+  }
+  getAllActiveEmpressDowagers().forEach(ed => {
+    html += `<div class="char-card">👑 <b>ฮองไทเฮา:</b> ${ed.name} — ความสัมพันธ์: <b>85/100</b></div>`;
+  });
+  const sorted = getSortedConsorts(state.consorts);
+  sorted.forEach(c => {
+    const kidsHtml = formatConsortChildrenText(c.id, true);
+    const deadTag = !c.alive ? `<span class="dead-red-text">🕯️ [สิ้นพระชนม์แล้ว]</span>` : (c.inColdPalace ? "[ตำหนักเย็น]" : "");
+    html += `<div class="char-card ${!c.alive ? "deceased" : ""}">🌸 <b>${c.rank}:</b> ${c.name} ${deadTag} — ความสัมพันธ์: <b>${c.relation}/100</b> | ความดี: ${c.stats.virtue} | ${kidsHtml}</div>`;
+  });
+  const sortedKids = getSortedChildren(state.children.filter(ch => ch.genBorn === state.generation));
+  sortedKids.forEach(ch => {
+    const deadTag = !ch.alive ? `<span class="dead-red-text">🕯️ [สิ้นพระชนม์แล้ว]</span>` : "";
+    html += `<div class="char-card ${!ch.alive ? "deceased" : ""}">👶 <b>${ch.rank}:</b> ${ch.name} ${deadTag} (มารดา: ${getLatestMotherDisplay(ch, true)}) — ความสัมพันธ์: <b>${ch.relation}/100</b></div>`;
+  });
+
+  if (state.relationsHistory.length > 0) {
+    html += `<hr style="border-color:var(--border-color); margin:15px 0;"><h3>🔒 ประวัติความสัมพันธ์รัชกาลก่อน (ถูกล็อกค่า)</h3>`;
+    state.relationsHistory.forEach(h => {
+      html += `<div style="background:#1c1c1c; color:#888; padding:10px; border-radius:5px; margin-bottom:8px; border:1px solid #444;">
+        <b>รุ่นที่ ${h.gen}: ฮ่องเต้ ${h.empName} (พ้นรัชกาลแล้ว - ฟรีสความสัมพันธ์)</b>
+        <ul style="margin:5px 0; padding-left:20px;">
+          ${h.records.map(r => `<li>${r.role} ${r.name}: ${r.rel}/100</li>`).join("")}
+        </ul>
+      </div>`;
+    });
+  }
+
+  openModal("💞 ทำเนียบความสัมพันธ์แยกตามรุ่นฮ่องเต้", html, "");
+}
+
+// ==================== UI RENDERING ====================
+function updateUI() {
+  document.getElementById("ui-dynasty").textContent = state.dynasty;
+  document.getElementById("ui-gen").textContent = state.generation;
+  document.getElementById("ui-emp-name").textContent = state.emperor.name;
+  document.getElementById("ui-emp-age").textContent = state.emperor.age;
+  document.getElementById("ui-era").textContent = state.era;
+  document.getElementById("ui-month").textContent = state.month;
+  document.getElementById("ui-week").textContent = state.week;
+  document.getElementById("ui-treasury").textContent = fmtNum(state.treasury);
+  document.getElementById("ui-health").textContent = state.emperor.health;
+
+  document.getElementById("ui-pop-left").textContent = state.pop.left;
+  document.getElementById("ui-pop-right").textContent = state.pop.right;
+  document.getElementById("ui-pop-manchu").textContent = state.pop.manchu;
+  document.getElementById("ui-pop-han").textContent = state.pop.han;
+  document.getElementById("ui-pop-foreign").textContent = state.pop.foreign;
+
+  const regent = getActiveRegent();
+  document.getElementById("regent-indicator").textContent = regent ? `⚠️ ${regent.shortTitle}ว่าราชการแทน` : "";
+
+  const isUnderage = state.emperor.age < 15;
+  const btnRecruit = document.getElementById("btn-recruit-consort");
+  btnRecruit.disabled = isUnderage;
+  btnRecruit.title = isUnderage ? "ฮ่องเต้ต้องพระชนมายุ 15 ปีขึ้นไปจึงจะรับสนมใหม่ได้" : "";
+
+  const btnCP = document.getElementById("btn-crown-prince");
+  if (state.crownPrinceId) {
+    btnCP.disabled = false;
+    btnCP.textContent = "⚠️ ปลดองค์รัชทายาท";
+  } else {
+    btnCP.textContent = "👑 แต่งตั้งองค์รัชทายาท";
+    const hasEmpress = state.consorts.some(c => c.alive && c.rank === "ฮองเฮา");
+    btnCP.disabled = hasEmpress && state.emperor.age < 45;
+  }
+
+  const hasEmpress = state.consorts.some(c => c.alive && c.rank === "ฮองเฮา");
+  document.getElementById("btn-appoint-empress").disabled = hasEmpress || isUnderage;
+
+  renderFamilyPanel();
+}
+
+function renderFamilyPanel() {
+  const container = document.getElementById("family-list");
+  const tab = state.currentTab;
+  let html = "";
+
+  if (tab === "emp") {
+    const e = state.emperor;
+    const regent = getActiveRegent();
+    html += `
+      <div class="char-card">
+        <div class="char-header"><span class="char-title">🐉 ฮ่องเต้ ${e.name} (รุ่นที่ ${state.generation})</span><span>อายุ ${e.age} ปี (${e.gender}) ${e.age < 15 ? "[วัยเยาว์]" : ""}</span></div>
+        <div class="char-meta">นิสัย: ${e.trait} | พื้นฐานร่างกาย: ${e.healthTrait} | สุขภาพ: ${e.health}/100</div>
+        <div>📚 ความรู้: <b>${e.stats.knowledge}</b> | ⚔️ การรบ: <b>${e.stats.combat}</b> | 🌿 ความดี: <b>${e.stats.virtue}</b></div>
+      </div>
+    `;
+
+    // รวบรวมผู้ใหญ่ในวัง (ไท่ซ่างหวง และ ฮองไทเฮาทุกพระองค์)
+    const elders = [];
+    if (state.taishanghuang) {
+      elders.push({ type: "tsh", data: state.taishanghuang, alive: state.taishanghuang.alive });
+    }
+    const edList = [];
+    if (state.empressDowager) edList.push(state.empressDowager);
+    state.dowagers.forEach(d => {
+      if (d.rank === "ฮองไทเฮา" && !edList.some(x => x.id === d.id)) {
+        edList.push(d);
+      }
+    });
+    edList.forEach(ed => {
+      elders.push({ type: "ed", data: ed, alive: ed.alive });
+    });
+
+    elders.sort((a, b) => (a.alive === b.alive ? 0 : a.alive ? -1 : 1));
+
+    elders.forEach(item => {
+      if (item.type === "tsh") {
+        const tsh = item.data;
+        const isTshRegent = regent && regent.shortTitle === "ไท่ซ่างหวง";
+        const statusTxt = !tsh.alive
+          ? `<span class="dead-red-text">🕯️ สวรรคตแล้ว</span>`
+          : (isTshRegent ? "ผู้สำเร็จราชการหลังม่าน (กุมอำนาจสูงสุดเหนือไทเฮา)" : (tsh.hasPower ? "ไท่ซ่างหวงผู้ทรงอำนาจ" : "พำนักอุทยานหลวง"));
+        html += `
+          <div class="char-card ${!tsh.alive ? "deceased" : ""}" style="${tsh.alive ? "border-color:#ff80bf;" : ""}">
+            <div class="char-header"><span class="char-title">👑 ไท่ซ่างหวง ${tsh.name} ${!tsh.alive ? `<span class="dead-red-text">🕯️ (สวรรคต)</span>` : ""}</span><span>อายุ ${tsh.age} ปี</span></div>
+            <div class="char-meta">สถานะ: <b>${statusTxt}</b></div>
+            <div>📚 ความรู้: <b>${tsh.stats.knowledge}</b> | ⚔️ การรบ: <b>${tsh.stats.combat}</b> | 🌿 ความดี: <b>${tsh.stats.virtue}</b></div>
+          </div>
+        `;
+      } else {
+        const ed = item.data;
+        const isEdRegent = regent && regent.shortTitle === "ฮองไทเฮา";
+        const statusTxt = !ed.alive
+          ? `<span class="dead-red-text">🕯️ สิ้นพระชนม์แล้ว</span>`
+          : (isEdRegent ? "ผู้สำเร็จราชการหลังม่าน" : (state.regentActive ? "ประทับตำหนักฉือหนิง (ไท่ซ่างหวงกุมอำนาจว่าราชการแทน)" : "ประทับตำหนักฉือหนิง"));
+        html += `
+          <div class="char-card ${!ed.alive ? "deceased" : ""}">
+            <div class="char-header"><span class="char-title">👑 ${ed.rank} ${ed.name} ${!ed.alive ? `<span class="dead-red-text">🕯️ (สิ้นพระชนม์)</span>` : ""}</span><span>อายุ ${ed.age} ปี</span></div>
+            <div class="char-meta">สถานะ: ${statusTxt}</div>
+            <div>📚 ความรู้: <b>${ed.stats.knowledge}</b> | ⚔️ การรบ: <b>${ed.stats.combat}</b> | 🌿 ความดี: <b>${ed.stats.virtue}</b></div>
+          </div>
+        `;
+      }
+    });
+  } else if (tab === "consorts") {
+    const sorted = getSortedConsorts(state.consorts);
+    if (sorted.length === 0) html = "<p style='color:var(--text-muted);'>ยังไม่มีพระสนมในรัชกาลนี้</p>";
+    const isUnderage = state.emperor.age < 15;
+    sorted.forEach(c => {
+      const isHigh = HIGH_CONSORT_RANKS.includes(c.rank);
+      const bannerLabel = BANNERS_ORDERED.find(b => b.value === c.banner)?.label || c.banner;
+      const kidsHtml = formatConsortChildrenText(c.id, true);
+      const statusBadge = !c.alive
+        ? `<span class="dead-red-text">🕯️ (สิ้นพระชนม์)</span>`
+        : (c.inColdPalace ? "❄️ (ตำหนักเย็น)" : (c.confinedMonths > 0 ? `🚪 (กักบริเวณอีก ${c.confinedMonths} เดือน)` : ""));
+      const cardClass = !c.alive
+        ? "deceased"
+        : (c.inColdPalace ? "cold-palace" : (c.confinedMonths > 0 ? "confined" : ""));
+
+      html += `
+        <div class="char-card ${cardClass}">
+          <div class="char-header">
+            <span class="char-title">${c.rank} ${c.name} ${statusBadge}</span>
+            <span>อายุ ${c.age} ปี</span>
+          </div>
+          <div class="char-meta">
+            สังกัด: ${bannerLabel} | สัมพันธ์: <b>${c.relation}/100</b> | 
+            <span style="color:var(--gold);">${kidsHtml}</span>
+            ${c.alive && c.pregnant ? `| 🤰 ครรภ์ ${c.pregMonths} เดือน` : ""}
+          </div>
+          <div>📚 ความรู้: <b>${c.stats.knowledge}</b> | ⚔️ การรบ: <b>${c.stats.combat}</b> | 🌿 ความดี: <b>${c.stats.virtue}</b></div>
+          ${c.alive ? `
+            <div class="char-actions">
+              ${!c.inColdPalace ? `
+                ${!isUnderage && c.confinedMonths === 0 && c.rank !== "นางใน" && c.rank !== "สามัญชน" ? `<button onclick="manualVisitConsort(${c.id})">${isHigh ? "เสด็จไปหาที่ตำหนัก" : "เรียกเข้าปรนนิบัติคืนนี้"}</button>` : ""}
+                <button onclick="openDemoteSelectModal(${c.id})">⬇️ ลดขั้น</button>
+                <button onclick="punishConsort(${c.id}, 'confine', 6)">🚪 กักบริเวณ 6 ด.</button>
+                <button onclick="punishConsort(${c.id}, 'cold')">❄️ ขังตำหนักเย็น</button>
+              ` : `
+                <button onclick="punishConsort(${c.id}, 'release')">ยกเลิกขัง (กลับมารับตำแหน่ง)</button>
+              `}
+              <button class="btn-danger" onclick="punishConsort(${c.id}, 'execute')">⚔️ ประหาร</button>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    });
+  } else if (tab === "sons") {
+    const sons = getSortedChildren(state.children.filter(c => c.gender === "ชาย" && c.id !== state.emperor.id));
+    if (sons.length === 0) html = "<p style='color:var(--text-muted);'>ยังไม่มีพระราชโอรสในรัชกาลปัจจุบัน</p>";
+    sons.forEach(s => {
+      const curMotherHtml = getLatestMotherDisplay(s, true);
+      const curFosterHtml = getLatestFosterDisplay(s, true);
+      html += `
+        <div class="char-card ${!s.alive ? "deceased" : ""}">
+          <div class="char-header">
+            <span class="char-title">🤴 ${s.name} — [${s.rank}] ${!s.alive ? `<span class="dead-red-text">🕯️ (สิ้นพระชนม์)</span>` : ""}</span>
+            <span>อายุ ${s.age} ปี</span>
+          </div>
+          <div class="char-meta">พระมารดาผู้ให้กำเนิด: <b>${curMotherHtml}</b> | ผู้เลี้ยงดู: <b>${curFosterHtml}</b> | สัมพันธ์: ${s.relation}/100 ${s.marriageResidence ? `| ${s.marriageResidence}` : ""}</div>
+          <div>📚 ความรู้: <b>${s.stats.knowledge}</b> | ⚔️ การรบ: <b>${s.stats.combat}</b> | 🌿 ความดี: <b>${s.stats.virtue}</b></div>
+          ${s.alive ? `
+            <div class="char-actions">
+              <button onclick="openPromotePrinceModal(${s.id})">🎖️ เลื่อนขั้นบรรดาศักดิ์</button>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    });
+  } else if (tab === "daughters") {
+    const daughters = getSortedChildren(state.children.filter(c => c.gender === "หญิง"));
+    if (daughters.length === 0) html = "<p style='color:var(--text-muted);'>ยังไม่มีพระราชธิดาในรัชกาลปัจจุบัน</p>";
+    daughters.forEach(d => {
+      const curMotherHtml = getLatestMotherDisplay(d, true);
+      const curFosterHtml = getLatestFosterDisplay(d, true);
+      html += `
+        <div class="char-card ${!d.alive ? "deceased" : ""}">
+          <div class="char-header">
+            <span class="char-title">👸 องค์หญิง ${d.name} ${!d.alive ? `<span class="dead-red-text">🕯️ (สิ้นพระชนม์)</span>` : ""}</span>
+            <span>อายุ ${d.age} ปี</span>
+          </div>
+          <div class="char-meta">พระมารดาผู้ให้กำเนิด: <b>${curMotherHtml}</b> | ผู้เลี้ยงดู: <b>${curFosterHtml}</b> | สัมพันธ์: ${d.relation}/100 ${d.marriageResidence ? `| สถานะ: ${d.marriageResidence}` : ""}</div>
+          <div>📚 ความรู้: <b>${d.stats.knowledge}</b> | ⚔️ การรบ: <b>${d.stats.combat}</b> | 🌿 ความดี: <b>${d.stats.virtue}</b></div>
+        </div>
+      `;
+    });
+  } else if (tab === "dowagers") {
+    const sortedDowagers = getSortedConsorts(state.dowagers);
+    if (sortedDowagers.length === 0) html = "<p style='color:var(--text-muted);'>ไม่มีเจ้านายฝ่ายในจากรัชกาลก่อน</p>";
+    sortedDowagers.forEach(d => {
+      const statusBadge = !d.alive ? `<span class="dead-red-text">🕯️ (สิ้นพระชนม์)</span>` : (d.inColdPalace ? "❄️ (ตำหนักเย็น)" : "");
+      html += `
+        <div class="char-card ${!d.alive ? "deceased" : ""}">
+          <div class="char-header"><span class="char-title">${d.rank} ${d.name} ${statusBadge}</span><span>อายุ ${d.age} ปี</span></div>
+          <div class="char-meta">สังกัด: ${d.banner} | <span style="color:var(--text-muted);">อดีตพระสนมรัชกาลก่อน</span></div>
+          <div>📚 ความรู้: <b>${d.stats.knowledge}</b> | ⚔️ การรบ: <b>${d.stats.combat}</b> | 🌿 ความดี: <b>${d.stats.virtue}</b></div>
+        </div>
+      `;
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+function manualVisitConsort(id) {
+  if (state.emperor.age < 15) return;
+  const c = state.consorts.find(x => x.id === id);
+  const isHigh = HIGH_CONSORT_RANKS.includes(c.rank);
+  if (isHigh) {
+    setSpeed(0);
+    openModal(
+      "🌙 เสด็จตำหนักฝ่ายใน",
+      `<p>ฮ่องเต้เสด็จไปหา <b>${c.rank} ${c.name}</b> (${getConsortBriefInfo(c, true)}) พระองค์จะประทับค้างคืนด้วยหรือไม่?</p>`,
+      `<button onclick="resolveNightService(${c.id}, true)">ประทับค้างคืนด้วย</button>
+       <button onclick="resolveNightService(${c.id}, false)">เสด็จกลับตำหนัก</button>`
+    );
+  } else {
+    addLog(`ฮ่องเต้มีรับสั่งเรียก "${c.rank} ${c.name}" (${getConsortBriefInfo(c, false)}) เข้าปรนนิบัติในคืนนี้`, "normal");
+    resolveNightService(c.id, true, true);
+    updateUI();
+  }
+}
+
+function modPop(changes) {
+  for (const k in changes) {
+    state.pop[k] = Math.max(0, Math.min(100, state.pop[k] + changes[k]));
+  }
+}
+
+function addLog(text, type = "normal") {
+  const timeStr = `[รัชศก ${state.era} ด.${state.month} ส.${state.week}]`;
+  state.logs.unshift({ timeStr, text, type });
+  if (state.logs.length > 150) state.logs.pop();
+
+  const list = document.getElementById("chronicle-list");
+  const cls = type === "important" ? "log-important" : (type === "critical" ? "log-critical" : "log-normal");
+  const div = document.createElement("div");
+  div.className = `log-entry ${cls}`;
+  div.innerHTML = `<span class="log-time">${timeStr}</span>${text}`;
+  list.prepend(div);
+}
+
+function getRegentNotice() {
+  const regent = getActiveRegent();
+  if (!regent) return "";
+  return `<div class="regent-banner">⚠️ ฮ่องเต้พระชนมายุไม่เกิน 22 พรรษา: การตัดสินพระทัยนี้ต้องได้รับความเห็นชอบจาก "${regent.role}" ผู้สำเร็จราชการหลังม่าน</div>`;
+}
+
+// ==================== MODAL QUEUE & HELPERS ====================
+function renderModalItem(item) {
+  isModalShowing = true;
+  currentModalRequired = !!item.required;
+  const queueBadge = modalQueue.length > 0 ? `<span class="queue-badge">⏳ รอตัดสินใจอีก ${modalQueue.length} เรื่อง</span>` : "";
+  document.getElementById("modal-title").innerHTML = `${item.title} ${queueBadge}`;
+  document.getElementById("modal-body").innerHTML = item.bodyHtml;
+
+  const topClose = document.getElementById("modal-top-close");
+  if (topClose) topClose.style.display = currentModalRequired ? "none" : "inline-block";
+
+  const cancelBtnHtml = currentModalRequired ? "" : `<button class="modal-cancel-btn" onclick="closeModal()">ยกเลิก / ปิดหน้าต่าง</button>`;
+  document.getElementById("modal-footer").innerHTML = `${item.footerHtml} ${cancelBtnHtml}`;
+  document.getElementById("modal-overlay").style.display = "flex";
+}
+
+function openModal(title, bodyHtml, footerHtml, options = {}) {
+  const item = {
+    title,
+    bodyHtml,
+    footerHtml,
+    required: !!options.required
+  };
+
+  if (options.replace) {
+    renderModalItem(item);
+    return;
+  }
+
+  if (isModalShowing) {
+    if (options.priority) {
+      modalQueue.unshift(item);
+    } else {
+      modalQueue.push(item);
+    }
+    const titleEl = document.getElementById("modal-title");
+    if (titleEl) {
+      const baseTitle = titleEl.innerHTML.replace(/<span class="queue-badge">.*?<\/span>/, "").trim();
+      titleEl.innerHTML = `${baseTitle} <span class="queue-badge">⏳ รอตัดสินใจอีก ${modalQueue.length} เรื่อง</span>`;
+    }
+    return;
+  }
+
+  renderModalItem(item);
+}
+
+function closeModal(forceClearAll = false) {
+  if (forceClearAll) {
+    modalQueue = [];
+    isModalShowing = false;
+    document.getElementById("modal-overlay").style.display = "none";
+    return;
+  }
+
+  if (modalQueue.length > 0) {
+    const nextItem = modalQueue.shift();
+    setSpeed(0);
+    renderModalItem(nextItem);
+    return;
+  }
+
+  isModalShowing = false;
+  currentModalRequired = false;
+  document.getElementById("modal-overlay").style.display = "none";
+}
+
+function confirmResetDynasty() {
+  setSpeed(0);
+  openModal(
+    "⚠️ ยืนยันการหยุดราชวงศ์",
+    `<p style="color:#ff4d4d; font-weight:bold;">พระองค์แน่พระทัยหรือไม่ที่จะหยุดราชวงศ์นี้?</p>
+     <p>หากยืนยัน ข้อมูลทั้งหมดของราชวงศ์ <b>${state.dynasty}</b> จะถูกลบหายไปทั้งหมด และกลับไปเริ่มต้นนับหนึ่งใหม่ตั้งแต่หน้าตั้งค่าราชวงศ์ (ช่องเซฟที่บันทึกไว้จะยังคงอยู่)</p>`,
+    `<button class="btn-danger" onclick="location.reload()">ยืนยันหยุดราชวงศ์และเริ่มใหม่ทั้งหมด</button>`
+  );
+}
+
+// Initialize setup consort editors on load
+renderSetupConsortEditors();
+</script>
+</body>
+</html>
