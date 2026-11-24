@@ -263,6 +263,7 @@
                     <span class="font-bold text-white" id="top-emperor-title">ฮ่องเต้: -</span>
                     <span id="top-regent-badge" class="hidden px-2 py-0.5 rounded bg-purple-900/70 border border-purple-500/50 text-purple-200 text-[11px]"></span>
                     <span class="px-2 py-0.5 rounded bg-stone-800 border border-stone-600 text-amber-200 font-royal" id="top-date">รัชศกที่ 1 เดือนที่ 1 สัปดาห์ที่ 1</span>
+                    <span class="px-2 py-0.5 rounded bg-amber-900/60 border border-amber-500/40 text-amber-200 font-bold" id="top-economy">📈 เศรษฐกิจปกติ</span>
                 </div>
 
                 <!-- Speed Controls -->
@@ -826,6 +827,7 @@ function createInitialGameState(empName, empGender, empAge, initConsorts) {
         month: 1,
         week: 1,
         treasury: 1000000,
+        economyState: 'normal', // 'boom' (เงินดี), 'normal' (ปกติ), 'recession' (เงินฝืด)
         mourningWeeks: 0,
         emperor: {
             id: 'emp_1',
@@ -1595,8 +1597,28 @@ function processMonthlyTick() {
 }
 
 function processYearlyTick() {
+    // สุ่มสภาวะเศรษฐกิจประจำปี (ช่วงเงินดี / ช่วงปกติ / ช่วงเงินฝืด)
+    const ecoRoll = Math.random();
+    let ecoMultiplier = 1.0;
+    let ecoAnnounce = '';
+    if (ecoRoll < 0.30) {
+        gameState.economyState = 'boom';
+        ecoMultiplier = 1.45;
+        ecoAnnounce = '📈 ปีนี้ฟ้าฝนเป็นใจ การค้าขายรุ่งเรือง เข้าสู่ "ช่วงเงินดี" ภาษีและรายได้เพิ่มขึ้นมาก!';
+    } else if (ecoRoll < 0.65) {
+        gameState.economyState = 'normal';
+        ecoMultiplier = 1.0;
+        ecoAnnounce = '⚖️ บ้านเมืองสงบสุข สภาวะเศรษฐกิจอยู่ในเกณฑ์ปกติ';
+    } else {
+        gameState.economyState = 'recession';
+        ecoMultiplier = 0.55;
+        ecoAnnounce = '📉 ปีนี้เกิดภัยแล้งและภาวะเงินฝืด การเก็บภาษีและการค้าซบเซา รายได้ลดลง!';
+    }
+    addLog(`สภาวะเศรษฐกิจประจำรัชศกที่ ${gameState.year}: ${ecoAnnounce}`, gameState.economyState === 'boom' ? 'gold' : gameState.economyState === 'recession' ? 'red' : 'white');
+
     const overallPop = getOverallPopularity();
-    const taxIncome = Math.round(1450000 + (overallPop * 14000) + (gameState.emperor.knowledge * 4000));
+    const baseTax = 1200000 + (overallPop * 12000) + (gameState.emperor.knowledge * 3500);
+    const taxIncome = Math.round(baseTax * ecoMultiplier);
     gameState.treasury += taxIncome;
 
     gameState.emperor.age++;
@@ -2311,9 +2333,130 @@ function triggerChildrenEvent() {
 
 function triggerOuterCourtEvent() {
     const r = Math.random();
+    const eco = gameState.economyState || 'normal';
+    const ecoScale = eco === 'boom' ? 1.25 : eco === 'recession' ? 0.55 : 0.9;
+    const clampIncome = (raw) => {
+        const rounded = Math.round((raw * ecoScale) / 10000) * 10000;
+        return Math.max(50000, Math.min(950000, rounded));
+    };
 
-    if (r < 0.25) {
-        const repairCost = (Math.floor(Math.random() * 10) + 1) * 50000;
+    // เหตุการณ์หาเงินเข้าท้องพระคลัง (+50,000 ถึงไม่เกิน 1,000,000 ตำลึง ปรับตามช่วงเงินดี/เงินฝืด)
+    if (r < 0.34) {
+        const incomeType = Math.floor(Math.random() * 4);
+        if (incomeType === 0) {
+            const inc1 = clampIncome(350000 + Math.floor(Math.random() * 350000));
+            const inc2 = clampIncome(200000 + Math.floor(Math.random() * 200000));
+            enqueueEvent({
+                title: `💰 กรมพระคลังรายงานยอดรายได้จากภาษีเกลือและใบชา`,
+                body: `
+                    <div class="bg-[#261c18] p-3 rounded-xl border border-amber-500/40 flex items-center gap-3 text-xs">
+                        <canvas id="ev-income-official" width="64" height="64" class="w-16 h-16 rounded-lg pixel-canvas shrink-0 border border-amber-500/40"></canvas>
+                        <div class="space-y-1">
+                            <div class="font-bold text-amber-300 text-sm">เสนาบดีกรมคลังกราบทูลรายงานผลประกอบการผูกขาดเกลือและชา</div>
+                            <p class="text-stone-300">${eco === 'recession' ? 'แม้ช่วงนี้ตลาดจะเงินฝืด แต่กรมเกลือและชาพอทำกำไรได้บ้าง' : 'ปีนี้ผลผลิตใบชาและเกลือสมุทรอุดมสมบูรณ์ พ่อค้าต่างเมืองเข้ามาซื้อขายคึกคัก'} ฮ่องเต้จะทรงจัดการรายได้ก้อนนี้อย่างไร?</p>
+                        </div>
+                    </div>
+                `,
+                onRender: () => drawPixelCharacter(document.getElementById('ev-income-official'), { role: 'official', isElder: false }),
+                choices: [
+                    {
+                        text: `1. นำรายได้ทั้งหมดเข้าท้องพระคลังหลวง (+${inc1.toLocaleString()} ตำลึง)`,
+                        action: () => {
+                            gameState.treasury += inc1;
+                            addLog(`ราชโองการจากฮ่องเต้: นำรายได้ภาษีเกลือและใบชาเข้าท้องพระคลัง +${inc1.toLocaleString()} ตำลึง`, 'gold');
+                        }
+                    },
+                    {
+                        text: `2. แบ่งเข้าคลังหลวงและลดหย่อนภาษีให้ราษฎรบางส่วน (+${inc2.toLocaleString()} ตำลึง, ชาวฮั่น/แมนจู +4)`,
+                        action: () => {
+                            gameState.treasury += inc2;
+                            adjustPopularity({ han: 4, manchu: 4 });
+                            addLog(`ราชโองการจากฮ่องเต้: จัดเก็บภาษีเกลือชาเข้าคลัง +${inc2.toLocaleString()} ตำลึง พร้อมลดหย่อนภาษีช่วยราษฎร (ราษฎร +4)`, 'gold');
+                        }
+                    }
+                ]
+            });
+            return;
+        } else if (incomeType === 1) {
+            const inc1 = clampIncome(500000 + Math.floor(Math.random() * 350000));
+            const inc2 = clampIncome(650000 + Math.floor(Math.random() * 400000));
+            enqueueEvent({
+                title: `⚖️ ตรวจพบขุนนางกังฉินยักยอกงบประมาณแผ่นดิน!`,
+                body: `
+                    <div class="bg-[#261c18] p-3 rounded-xl border border-red-500/40 flex items-center gap-3 text-xs">
+                        <canvas id="ev-corrupt-official" width="64" height="64" class="w-16 h-16 rounded-lg pixel-canvas shrink-0 border border-red-500/40"></canvas>
+                        <div class="space-y-1">
+                            <div class="font-bold text-rose-300 text-sm">ผู้ตรวจการแผ่นดินยื่นฎีกาฟ้องร้องขุนนางทุจริต</div>
+                            <p class="text-stone-300">ตรวจพบหลักฐานขุนนางท้องถิ่นยักยอกเงินหลวงและทรัพย์สินจำนวนมาก ฮ่องเต้จะทรงมีพระราชวินิจฉัยอย่างไร?</p>
+                        </div>
+                    </div>
+                `,
+                onRender: () => drawPixelCharacter(document.getElementById('ev-corrupt-official'), { role: 'official', isElder: true }),
+                choices: [
+                    {
+                        text: `1. สั่งริบทรัพย์สินทั้งหมดเข้าท้องพระคลังและปลดออกจากราชการ (+${inc1.toLocaleString()} ตำลึง, ราษฎร +5, ขุนนางซ้าย -3)`,
+                        action: () => {
+                            gameState.treasury += inc1;
+                            adjustPopularity({ han: 5, manchu: 5, left: -3 });
+                            addLog(`ราชโองการจากฮ่องเต้: ริบทรัพย์ขุนนางกังฉินเข้าท้องพระคลัง +${inc1.toLocaleString()} ตำลึง ปวงประชาแซ่ซ้องสรรเสริญ (ราษฎร +5)`, 'gold');
+                        }
+                    },
+                    {
+                        text: `2. สั่งให้ชดใช้เงินคืนคลังหลวงเพื่อแลกกับการไว้ชีวิต (+${inc2.toLocaleString()} ตำลึง, ขุนนางขวา -4)`,
+                        action: () => {
+                            gameState.treasury += inc2;
+                            adjustPopularity({ right: -4 });
+                            addLog(`ราชโองการจากฮ่องเต้: ปรับสินไหมขุนนางทุจริตเข้าท้องพระคลัง +${inc2.toLocaleString()} ตำลึง`, 'gold');
+                        }
+                    }
+                ]
+            });
+            return;
+        } else if (incomeType === 2) {
+            const inc1 = clampIncome(400000 + Math.floor(Math.random() * 350000));
+            const inc2 = clampIncome(600000 + Math.floor(Math.random() * 400000));
+            enqueueEvent({
+                title: `⛵ เปิดด่านการค้าทางทะเลและรับภาษีท่าเรือเมืองกวางโจว`,
+                body: `
+                    <div class="bg-[#261c18] p-3 rounded-xl border border-sky-500/40 flex items-center gap-3 text-xs">
+                        <canvas id="ev-trade-official" width="64" height="64" class="w-16 h-16 rounded-lg pixel-canvas shrink-0 border border-sky-500/40"></canvas>
+                        <div class="space-y-1">
+                            <div class="font-bold text-sky-300 text-sm">เรือสำเภาสินค้าจากต่างแดนเทียบท่าเมืองกวางโจว</div>
+                            <p class="text-stone-300">พ่อค้าต่างเมืองขออนุญาตเปิดคลังสินค้าแลกเปลี่ยนเครื่องกระเบื้อง ผ้าไหม และเงินตรา</p>
+                        </div>
+                    </div>
+                `,
+                onRender: () => drawPixelCharacter(document.getElementById('ev-trade-official'), { role: 'official', isElder: false }),
+                choices: [
+                    {
+                        text: `1. อนุมัติการค้าเสรีและจัดเก็บภาษีศุลกากร (+${inc1.toLocaleString()} ตำลึง, ชาวต่างเมือง +5)`,
+                        action: () => {
+                            gameState.treasury += inc1;
+                            adjustPopularity({ foreign: 5 });
+                            addLog(`ราชโองการจากฮ่องเต้: เปิดการค้าทางทะเล เก็บภาษีศุลกากรเข้าท้องพระคลัง +${inc1.toLocaleString()} ตำลึง (ต่างเมือง +5)`, 'gold');
+                        }
+                    },
+                    {
+                        text: `2. เรียกเก็บภาษีนำเข้าอัตราสูงเป็นพิเศษ (+${inc2.toLocaleString()} ตำลึง, ชาวต่างเมือง -4)`,
+                        action: () => {
+                            gameState.treasury += inc2;
+                            adjustPopularity({ foreign: -4 });
+                            addLog(`ราชโองการจากฮ่องเต้: เก็บภาษีการค้าอัตราสูงเข้าคลัง +${inc2.toLocaleString()} ตำลึง (ต่างเมือง -4)`, 'gold');
+                        }
+                    }
+                ]
+            });
+            return;
+        } else {
+            const bonus = clampIncome((Math.floor(Math.random() * 9) + 1) * 100000);
+            gameState.treasury += bonus;
+            addLog(`💰 กรมพระคลังรายงานการจัดเก็บภาษีบำรุงแผ่นดินและค่าเช่าที่ดินหลวง เงินเข้าท้องพระคลัง +${bonus.toLocaleString()} ตำลึง`, 'gold');
+            return;
+        }
+    }
+
+    if (r < 0.45) {
+        const repairCost = (Math.floor(Math.random() * 6) + 1) * 50000;
         gameState.treasury -= repairCost;
         gameState.yearlyExpenses.events += repairCost;
         addLog(`🔥 เกิดเหตุเพลิงไหม้ตำหนักในเขตพระราชฐาน! กรมโยธาเบิกเงินซ่อมแซม ${repairCost.toLocaleString()} ตำลึง`, 'red');
@@ -2325,7 +2468,7 @@ function triggerOuterCourtEvent() {
         return;
     }
 
-    if (r < 0.45) {
+    if (r < 0.62) {
         const girlName = getRandomFemaleName();
         const clanName = ['ป๋อเอ่อร์จี้จี๋เท่อ', 'เคอเอ่อร์ซิ่น', 'ปาหลิน', 'ถูเหม่อเท่อ'][Math.floor(Math.random() * 4)];
         enqueueEvent({
@@ -2366,7 +2509,7 @@ function triggerOuterCourtEvent() {
     }
 
     const activeDowager = gameState.dowagers.find(d => d.alive);
-    if (activeDowager && r < 0.65) {
+    if (activeDowager && r < 0.78) {
         const girlName = getRandomFemaleName();
         const clanName = getRandomClan();
         enqueueEvent({
@@ -2427,116 +2570,7 @@ function triggerOuterCourtEvent() {
         return;
     }
 
-    if (gameState.emperor.age >= 13 && r < 0.73) {
-        const isTeen = gameState.emperor.age <= 22;
-        enqueueEvent({
-            title: `🏮 ขันทีคนสนิทกราบทูลชวนปลอมพระองค์เสด็จประพาสนอกวังยามค่ำคืน`,
-            body: `<p class="text-xs text-stone-200">ค่ำคืนนี้บรรยากาศในเมืองหลวงคึกคักยิ่งนัก ขันทีกราบทูลเชิญเสด็จไปสำราญพระทัย ณ หอคณิกาเลื่องชื่อริมคลอง</p>`,
-            choices: [
-                {
-                    text: '1. ปลอมพระองค์เสด็จไปสำราญพระทัย ณ หอคณิกา (เสี่ยงประชวร / ถูกตำหนิ)',
-                    action: () => {
-                        if (isTeen && activeDowager) {
-                            activeDowager.relation = Math.max(0, activeDowager.relation - 15);
-                            adjustPopularity({ left: -6, right: -6 });
-                            addLog(`เรื่องอื้อฉาว! ฮ่องเต้แอบเสด็จหอคณิกา ถูก ${getDowagerFullTitle(activeDowager)} เรียกไปตำหนิอย่างหนัก!`, 'red');
-                        } else {
-                            adjustPopularity({ left: -5, han: -4 });
-                            if (Math.random() < 0.35) {
-                                gameState.emperor.health = Math.max(10, gameState.emperor.health - 18);
-                                addLog(`ราชโองการจากฮ่องเต้: เสด็จประพาสนอกวังยามวิกาล ทรงติดพระโรคประหลาด พระวรกายทรุดโทรม!`, 'green');
-                            } else {
-                                addLog(`ราชโองการจากฮ่องเต้: ทรงเสด็จประพาสนอกวังอย่างเงียบเชียบ (ค่านิยมขุนนาง -5)`, 'white');
-                            }
-                        }
-                    }
-                },
-                {
-                    text: '2. ปฏิเสธและประทับอ่านฎีกาในตำหนัก (ขุนนางซ้าย/ขวา +3)',
-                    action: () => {
-                        adjustPopularity({ left: 3, right: 3 });
-                        addLog(`ราชโองการจากฮ่องเต้: ทรงปฏิเสธการเที่ยวนอกวัง ตั้งพระทัยทรงงานราชการ (ขุนนาง +3)`, 'white');
-                    }
-                }
-            ]
-        });
-        return;
-    }
-
-    enqueueEvent({
-        title: `🌊 รายงานอุทกภัยแม่น้ำฮวงโหเอ่อล้นตลิ่ง`,
-        body: `<p class="text-xs text-stone-200">เจ้าเมืองรายงานว่าน้ำท่วมไร่นาของราษฎรเสียหายหนัก ขุนนางขอเบิกงบประมาณบรรเทาทุกข์</p>`,
-        choices: [
-            {
-                text: '1. เปิดคลังหลวงจ่ายเงินช่วยเหลือเต็มที่ (เสีย 250,000 ตำลึง, ชาวฮั่น/แมนจู +8)',
-                action: () => {
-                    gameState.treasury -= 250000;
-                    gameState.yearlyExpenses.events += 250000;
-                    adjustPopularity({ han: 8, manchu: 8 });
-                    addLog(`ราชโองการจากฮ่องเต้: เปิดคลังจ่ายเงิน 250,000 ตำลึงช่วยผู้ประสบอุทกภัย (ราษฎร +8)`, 'gold');
-                }
-            },
-            {
-                text: '2. สั่งให้ขุนนางท้องถิ่นเรี่ยไรกันเอง ไม่เบิกคลังหลวง (ชาวฮั่น -8)',
-                action: () => {
-                    adjustPopularity({ han: -8 });
-                    addLog(`ราชโองการจากฮ่องเต้: งดเบิกเงินพระคลังช่วยน้ำท่วม ราษฎรเดือดร้อน (ชาวฮั่น -8)`, 'red');
-                }
-            }
-        ]
-    });
-}
-
-function addMongolConsort(name, clan, rankKey, foreignBonus) {
-    const rankObj = CONSORT_RANKS.find(r => r.key === rankKey);
-    const currentCount = gameState.consorts.filter(c => c.alive && !c.inColdPalace && c.rankKey === rankKey).length;
-    const finalRank = (rankObj && currentCount < rankObj.max) ? rankObj : CONSORT_RANKS.find(r => r.key === 'guiren');
-
-    gameState.consorts.push({
-        id: 'consort_' + Date.now(),
-        name: name,
-        clan: clan,
-        rankKey: finalRank.key,
-        bannerRank: 2,
-        bannerName: EIGHT_BANNERS[1].name,
-        faction: 'ต่างเมือง',
-        age: 17,
-        health: 95,
-        goodness: 0,
-        knowledge: 50,
-        martial: 65,
-        relation: 65,
-        alive: true,
-        inColdPalace: false,
-        confinedMonths: 0,
-        pregnant: false,
-        pregMonths: 0,
-        childrenIds: [],
-        deadChildrenCount: 0,
-        goodDeeds: [],
-        badDeeds: [],
-        history: [`ท่านหญิงมองโกลอภิเษกเชื่อมสัมพันธไมตรี ได้รับแต่งตั้งเป็น ${name}${finalRank.title}`]
-    });
-
-    adjustPopularity({ foreign: foreignBonus });
-    showImperialEdict('ราชโองการสถาปนาพระสนมมองโกล', `เพื่อเชื่อมสัมพันธไมตรีอันแน่นแฟ้นระหว่างต้าชิงและทุ่งหญ้ามองโกล จึงมีพระราชโองการแต่งตั้งท่านหญิง <b>${name} สกุล${clan}</b> ขึ้นเป็น <b>${name}${finalRank.title}</b>`);
-    addLog(`ราชโองการจากฮ่องเต้: สถาปนาท่านหญิงมองโกลเป็น ${name}${finalRank.title} (ชาวต่างเมือง +${foreignBonus})`, 'gold');
-}
-
-// ==================== 9. BIRTH, MOTHER-CHILD BOND & RECLAIM LOGIC ====================
-function queueBirthEvent(mother) {
-    const isBoy = Math.random() < 0.52;
-    const gender = isBoy ? 'ชาย' : 'หญิง';
-    const defaultName = isBoy ? getRandomMaleName() : getRandomFemaleName();
-    const needsFoster = ['guiren', 'changzai', 'daying'].includes(mother.rankKey);
-
-    let fosterHtml = '';
-    if (needsFoster) {
-        const eligibleMothers = [
-            ...gameState.dowagers.filter(d => d.alive).map(d => ({ id: d.id, label: `${getDowagerFullTitle(d)} (ไทเฮา/ไท่เฟย)` })),
-            ...getActiveConsortsSorted().filter(c => !c.inColdPalace && ['empress', 'huangguifei', 'guifei', 'fei', 'pin'].includes(c.rankKey)).map(c => ({ id: c.id, label: `${getConsortFullTitle(c)} (สกุล${c.clan})` }))
-        ];
-        const opts = eligibleMothers.map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+    if (gameState.emperor.age >= 13 && r < 0.88) {
         fosterHtml = `
             <div class="bg-[#140e0c] p-2.5 rounded-lg border border-amber-600/40 space-y-1">
                 <label class="block text-xs font-bold text-amber-300">เนื่องจากพระมารดามียศขั้นกุ้ยเหรินลงไป โปรดเลือกผู้เลี้ยงดูพระหน่อ:</label>
@@ -3097,12 +3131,16 @@ function actionDeclareWar() {
 
     const winChance = Math.min(0.85, 0.40 + (gameState.emperor.martial / 220) + (gameState.pop.manchu / 300));
     if (Math.random() < winChance) {
-        const loot = (Math.floor(Math.random() * 8) + 3) * 500000;
+        // ชนะสงครามมีสิทธิ์ได้เงินบรรณาการและสินสงครามสูงสุดถึง 20,000,000 ตำลึง
+        const isJackpot = Math.random() < 0.35;
+        const loot = isJackpot
+            ? 20000000
+            : (Math.floor(Math.random() * 15) + 4) * 1000000;
         gameState.treasury += loot;
         adjustPopularity({ right: 8, manchu: 8, foreign: 5 });
         showSevereAlert({
-            badge: 'ชัยชนะอันเกรียงไกร',
-            title: 'กองทัพต้าชิงได้รับชัยชนะอย่างเด็ดขาด!',
+            badge: isJackpot ? 'ชัยชนะยิ่งใหญ่ประวัติศาสตร์!' : 'ชัยชนะอันเกรียงไกร',
+            title: isJackpot ? 'ยึดคลังหลวงข้าศึกได้สำเร็จ กวาดบรรณาการ 20 ล้านตำลึง!' : 'กองทัพต้าชิงได้รับชัยชนะอย่างเด็ดขาด!',
             desc: `แม่ทัพแปดกองธงตีทัพข้าศึกแตกพ่าย ยึดทรัพย์สินและบรรณาการส่งเข้าท้องพระคลังได้ <b>+${loot.toLocaleString()} ตำลึง</b>!`
         });
         addLog(`ราชโองการจากฮ่องเต้: กองทัพต้าชิงชนะสงคราม! ยึดทรัพย์เข้าคลัง +${loot.toLocaleString()} ตำลึง (ขุนนางขวา/แมนจู +8)`, 'gold');
@@ -4119,6 +4157,21 @@ function updateAllUI() {
     document.getElementById('top-emperor-title').innerText = `ฮ่องเต้: ${emp.name} (${emp.age} พรรษา)`;
     document.getElementById('top-date').innerText = `รัชศกที่ ${gameState.year} เดือนที่ ${gameState.month} สัปดาห์ที่ ${gameState.week}`;
     document.getElementById('top-treasury').innerText = gameState.treasury.toLocaleString();
+
+    const ecoBadge = document.getElementById('top-economy');
+    if (ecoBadge) {
+        const eco = gameState.economyState || 'normal';
+        if (eco === 'boom') {
+            ecoBadge.innerText = '📈 ช่วงเงินดี';
+            ecoBadge.className = 'px-2 py-0.5 rounded bg-emerald-900/70 border border-emerald-500/50 text-emerald-300 font-bold';
+        } else if (eco === 'recession') {
+            ecoBadge.innerText = '📉 ช่วงเงินฝืด';
+            ecoBadge.className = 'px-2 py-0.5 rounded bg-red-900/70 border border-red-500/50 text-red-300 font-bold';
+        } else {
+            ecoBadge.innerText = '⚖️ เศรษฐกิจปกติ';
+            ecoBadge.className = 'px-2 py-0.5 rounded bg-amber-900/60 border border-amber-500/40 text-amber-200 font-bold';
+        }
+    }
 
     const regentBadge = document.getElementById('top-regent-badge');
     if (emp.regent) {
